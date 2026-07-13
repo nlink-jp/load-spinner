@@ -24,8 +24,13 @@ func runDoctor() -> Int32 {
         healthy = false
     }
 
-    // GPU sampling arrives in Phase 2; report it as pending for now.
-    print("GPU: pending — not implemented yet")
+    // GPU is optional: unavailability is a degrade (indicator disabled), not a
+    // hard failure, so it does not flip the overall status.
+    if let utilization = IOKitGPUSampler().sample() {
+        print("GPU: ok — \(Int((utilization * 100).rounded()))% (IOKit PerformanceStatistics)")
+    } else {
+        print("GPU: unavailable — no IOAccelerator utilization key found; GPU display will be disabled")
+    }
 
     print("")
     print(healthy ? "Status: healthy" : "Status: degraded")

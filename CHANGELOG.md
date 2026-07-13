@@ -19,3 +19,7 @@ follows semantic versioning once released.
 - Menu to change display mode (max / CPU only), symbol shape, and color, persisted
   to `UserDefaults`.
 - `load-spinner doctor` and `--version` CLI subcommands in the same binary.
+- GPU utilization sampling via IOKit `IOAccelerator` `PerformanceStatistics`
+  (`gpuUtilization(fromPerformanceStatistics:)` + `IOKitGPUSampler`), tolerant of
+  the undocumented key being absent (returns nil → GPU display disabled). `doctor`
+  now reports GPU availability.
