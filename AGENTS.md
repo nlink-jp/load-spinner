@@ -8,11 +8,19 @@ Single binary also exposes a `doctor` CLI subcommand.
 
 ## Build & test
 
-- `make build` — compiles release binary and assembles `dist/load-spinner.app`
-  (Info.plist version injected from `git describe`). **Never** run `swift build`
-  for release output; always use the Makefile.
+- `make build` — compiles the release binary. **Never** run `swift build` for
+  release output; always use the Makefile.
+- `make build-app` — assembles `dist/load-spinner.app` (Info.plist version from
+  `git describe`) and signs it with a Developer ID Application identity.
+- `make package` — build-app, then notarize + staple (`nlink-jp-notary` keychain
+  profile), and zip to `dist/load-spinner-v<version>-darwin-arm64.zip`.
+- `make brew` — generate the Homebrew cask from the built zip into the local
+  `nlink-jp/homebrew-tap` checkout (see `scripts/release-brew.mk`).
 - `make test` / `swift test` — runs `LoadSpinnerCoreTests`.
-- `make run` — build and launch.
+- `make run` — `swift run` (debug).
+
+Release signing/notarization uses the shared scripts under `scripts/` (vendored
+from the org `.github` templates), same as the other util-series GUI apps.
 
 ## Structure
 

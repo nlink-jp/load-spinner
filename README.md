@@ -21,15 +21,21 @@ are implemented. Remaining: signing/notarization and release
 
 ## Build
 
-Always build through the Makefile — it assembles a proper `.app` bundle under
-`dist/` (never run `swift build` directly for release output).
+Always build through the Makefile (never run `swift build` directly for release
+output).
 
 ```sh
-make build     # -> dist/load-spinner.app
-make test      # run the unit test suite
-make run       # build and launch
+make build       # compile the release binary
+make build-app   # assemble the signed dist/load-spinner.app
+make package     # build-app, notarize + staple, then zip for release
+make test        # run the unit test suite
+make run         # build and run (debug)
 make clean
 ```
+
+`make build-app` signs the bundle with a Developer ID Application identity;
+`make package` additionally notarizes and staples it, then produces
+`dist/load-spinner-v<version>-darwin-arm64.zip` for release.
 
 ## Usage
 

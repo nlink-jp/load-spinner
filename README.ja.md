@@ -19,15 +19,19 @@
 
 ## ビルド
 
-必ず Makefile 経由でビルドします。`dist/` 配下に `.app` バンドルを組み立てます
-（リリース用途で `swift build` を直接叩かないこと）。
+必ず Makefile 経由でビルドします（リリース用途で `swift build` を直接叩かないこと）。
 
 ```sh
-make build     # -> dist/load-spinner.app
-make test      # テスト実行
-make run       # ビルドして起動
+make build       # リリースバイナリをコンパイル
+make build-app   # 署名済み dist/load-spinner.app を組み立て
+make package     # build-app + notarize + staple してリリース用 zip を生成
+make test        # テスト実行
+make run         # ビルドして起動（デバッグ）
 make clean
 ```
+
+`make build-app` は Developer ID Application で署名し、`make package` はさらに
+notarize + staple して `dist/load-spinner-v<version>-darwin-arm64.zip` を生成します。
 
 ## 使い方
 

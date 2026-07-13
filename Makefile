@@ -1,33 +1,63 @@
-BINARY   := load-spinner
-APP      := $(BINARY).app
-DIST     := dist
-VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-BUNDLE_ID := jp.nlink.load-spinner
+APP_NAME    := load-spinner
+NAME        := load-spinner
+BUNDLE_ID   := jp.nlink.load-spinner
+VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.1.0")
+BUILD_DIR   := .build/release
+DIST_DIR    := dist
+APP_BUNDLE  := $(DIST_DIR)/$(APP_NAME).app
 
-.PHONY: all build test run clean
+# macOS Developer ID signing / notarization (see nlink-jp/.github CONVENTIONS.md
+# §Code Signing → GUI apps). Pure SwiftUI/AppKit needs no JIT entitlements —
+# Hardened Runtime alone suffices. The single binary is both the GUI and the
+# `doctor` CLI (invoked as a subcommand).
+CODESIGN_IDENTITY ?= Developer ID Application
+NOTARY_PROFILE    ?= nlink-jp-notary
+CODESIGN_SCRIPT := scripts/codesign-darwin-app.sh
+NOTARIZE_SCRIPT := scripts/notarize-darwin-app.sh
 
-all: build
+# Homebrew tap generation (see scripts/release-brew.mk). After `make package`,
+# `make brew` generates this cask from the built darwin-arm64 zip into the local
+# nlink-jp/homebrew-tap checkout. The zip is named after $(NAME); the .app inside
+# is $(APP_NAME).app.
+BREW_KIND      := cask
+BREW_DESC      := Menu-bar CPU/GPU load indicator that spins with system load
+BREW_NAME      := $(NAME)
+BREW_APP       := $(APP_NAME).app
+BREW_BUNDLE_ID := $(BUNDLE_ID)
+include scripts/release-brew.mk
+
+.PHONY: build build-app package test run clean
+
+## build: build the release binary
+build:
+	@mkdir -p $(DIST_DIR)
+	swift build -c release
+
+## build-app: assemble the signed .app bundle
+build-app: build
+	@rm -rf $(APP_BUNDLE)
+	@mkdir -p $(APP_BUNDLE)/Contents/MacOS
+	@cp $(BUILD_DIR)/$(APP_NAME) $(APP_BUNDLE)/Contents/MacOS/
+	@sed 's/$${VERSION}/$(VERSION)/g; s/$${BUNDLE_ID}/$(BUNDLE_ID)/g; s/$${APP_NAME}/$(APP_NAME)/g' \
+		Info.plist > $(APP_BUNDLE)/Contents/Info.plist
+	@printf 'APPL????' > $(APP_BUNDLE)/Contents/PkgInfo
+	@$(CODESIGN_SCRIPT) $(APP_BUNDLE) "$(CODESIGN_IDENTITY)"
+	@echo "Built $(APP_BUNDLE) ($(VERSION))"
+
+## package: build-app, notarize + staple the .app, then zip for release
+package: build-app
+	@$(NOTARIZE_SCRIPT) $(APP_BUNDLE) "$(NOTARY_PROFILE)"
+	@cd $(DIST_DIR) && /usr/bin/ditto -c -k --keepParent $(APP_NAME).app $(NAME)-$(VERSION)-darwin-arm64.zip
+	@ls -la $(DIST_DIR)/$(NAME)-$(VERSION)-darwin-arm64.zip
 
 ## test: run the unit test suite
 test:
 	swift test
 
-## build: compile release binary and assemble dist/load-spinner.app
-build:
-	swift build -c release
-	@rm -rf $(DIST)/$(APP)
-	@mkdir -p $(DIST)/$(APP)/Contents/MacOS
-	@cp .build/release/$(BINARY) $(DIST)/$(APP)/Contents/MacOS/$(BINARY)
-	@sed -e 's|@VERSION@|$(VERSION)|g' -e 's|@BUNDLE_ID@|$(BUNDLE_ID)|g' \
-		Resources/Info.plist.in > $(DIST)/$(APP)/Contents/Info.plist
-	@printf 'APPL????' > $(DIST)/$(APP)/Contents/PkgInfo
-	@echo "Built $(DIST)/$(APP) ($(VERSION))"
-
-## run: build then launch the app from the bundle
-run: build
-	$(DIST)/$(APP)/Contents/MacOS/$(BINARY)
+## run: build and run (debug)
+run:
+	swift run
 
 ## clean: remove build artifacts
 clean:
-	swift package clean
-	rm -rf $(DIST)
+	rm -rf $(DIST_DIR) .build
