@@ -22,14 +22,20 @@ Sources/
     Metrics.swift        CPUTicks + cpuUsage(from:to:)
     Speed.swift          SpeedRange + rotationsPerMinute(forLoad:)
     CPUSampler.swift     CPUSampling protocol, MachCPUSampler, LoadMonitor
+    GPUSampler.swift     GPUSampling, gpuUtilization(fromPerformanceStatistics:), IOKitGPUSampler
+    Indicator.swift      indicatorPlans(...) — mode+loads -> IndicatorPlan[], GPU degrade
     Settings.swift       IndicatorShape/DisplayMode enums, AppSettings, palette
-  load-spinner/        Executable (AppKit)
+  load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
-    AppDelegate.swift    NSStatusItem, sampling timer, settings menu
-    SpinnerView.swift    Layer-backed animated indicator (lineDashPhase)
+    AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, popover
+    SpinnerView.swift    Layer-backed animated indicator(s) (1-2 cells, lineDashPhase)
+    AppModel.swift       ObservableObject: live loads, history, settings
+    PanelView.swift      SwiftUI panel: live gauges, Swift Charts history, settings
     SettingsStore.swift  UserDefaults-backed AppSettings persistence
+    LoginItem.swift      SMAppService launch-at-login wrapper
     Doctor.swift         `doctor` subcommand
-    NSColor+Hex.swift    #RRGGBB parsing
+    NSColor+Hex.swift    #RRGGBB -> NSColor
+    Color+Hex.swift      #RRGGBB -> SwiftUI Color
     Version.swift        appVersion from bundle Info.plist
 Tests/LoadSpinnerCoreTests/
 Resources/Info.plist.in  Bundle template (@VERSION@, @BUNDLE_ID@)
@@ -46,15 +52,19 @@ Resources/Info.plist.in  Bundle template (@VERSION@, @BUNDLE_ID@)
   target/selector API (not `@Sendable` closures) to avoid capture errors. The
   status view lives for the app lifetime, so it has no `deinit` timer teardown.
 - **Testability.** All non-trivial logic lives in `LoadSpinnerCore` as pure
-  functions or behind the `CPUSampling` protocol (mocked in tests). The AppKit
-  layer stays thin.
+  functions or behind the `CPUSampling`/`GPUSampling` protocols (mocked in tests).
+  The AppKit/SwiftUI layer stays thin.
+- **Panel is built lazily.** The `NSPopover`'s `NSHostingController` is created on
+  open and released in `popoverDidClose`. This matters: an earlier version created
+  it eagerly and a `TimelineView(.animation)` drove continuous full-panel layout
+  even while closed (~12% CPU). The panel now uses a static load gauge (the menu
+  bar carries the animation), and idle CPU is ~1%.
+- **GPU degrade.** GPU availability is probed once at launch (`IOKitGPUSampler`).
+  When unavailable, `indicatorPlans` drops GPU and the panel hides GPU modes.
 - **Version.** Injected into Info.plist by `make build`; read at runtime via
   `CFBundleShortVersionString`, falling back to `dev` outside a bundle.
 
 ## Roadmap
 
-- Phase 2: GPU via IOKit `PerformanceStatistics` (auto-disable when the key is
-  absent), GPU-only / both modes with per-source shape+color, SwiftUI click panel
-  (live values + Swift Charts history), `SMAppService` login-item toggle.
 - Phase 3: signing + notarization, zip distribution, Homebrew tap, umbrella
   submodule + catalog integration.

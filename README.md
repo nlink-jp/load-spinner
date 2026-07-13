@@ -9,9 +9,10 @@ is no numeric readout in the menu bar by design.
 
 ## Status
 
-Early development. Phase 1 (CPU monitoring + menu bar animation) is implemented;
-GPU monitoring and the click-to-open panel (live values + history graph) are
-planned for Phase 2. See [docs/en/load-spinner-rfp.md](docs/en/load-spinner-rfp.md).
+In development. CPU and GPU monitoring, the animated menu bar indicator (one or
+two frames), and the click-to-open panel (live gauges, history graph, settings)
+are implemented. Remaining: signing/notarization and release
+(Phase 3). See [docs/en/load-spinner-rfp.md](docs/en/load-spinner-rfp.md).
 
 ## Requirements
 
@@ -33,13 +34,16 @@ make clean
 ## Usage
 
 Launch `dist/load-spinner.app`. A spinning indicator appears in the menu bar.
-Click it to open a menu where you can change:
+Click it to open a panel showing live CPU/GPU load, a recent history graph, and
+settings:
 
-- Display mode: max (higher of CPU/GPU) or CPU only *(GPU-related modes arrive in Phase 2)*
-- Symbol: circle or square
-- Color
+- Display mode: max (higher of CPU/GPU), CPU only, GPU only, or both (two indicators)
+- Symbol: circle or square — set per source (CPU and GPU independently in both mode)
+- Color — set per source
+- Launch at login
 
-Settings persist across launches.
+When GPU utilization cannot be read on the system, GPU-related options are
+disabled automatically and the app runs CPU-only. Settings persist across launches.
 
 ### CLI
 

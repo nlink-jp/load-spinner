@@ -23,3 +23,12 @@ follows semantic versioning once released.
   (`gpuUtilization(fromPerformanceStatistics:)` + `IOKitGPUSampler`), tolerant of
   the undocumented key being absent (returns nil → GPU display disabled). `doctor`
   now reports GPU availability.
+- `indicatorPlans(...)` resolves which indicators to show for the current mode and
+  loads, with graceful GPU degrade (GPU-only → CPU, both → CPU-only, max ignores GPU).
+- All display modes wired up: max / CPU only / GPU only / both. In `both` mode two
+  indicators sit side by side, each with its own shape and color.
+- Click-to-open SwiftUI panel (`NSPopover`): live CPU/GPU load gauges, a ~3-minute
+  history chart (Swift Charts), and inline settings (mode, per-source shape and
+  color). Replaces the previous settings `NSMenu`. Built lazily so it does no work
+  while closed.
+- Launch-at-login toggle via `SMAppService`.
