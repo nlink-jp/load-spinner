@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
-## [Unreleased]
+## [0.1.0] - 2026-07-13
 
 ### Added
 
@@ -35,6 +35,8 @@ follows semantic versioning once released.
 - Optional vertical `CPU` / `GPU` / `MAX` badges next to the menu bar indicators,
   toggled from the panel. Monochrome and inverted for the menu bar's light/dark
   appearance, with a small gap between the two indicators in `both` mode.
+- Developer ID signed, notarized, and stapled `.app`, distributed as a
+  `darwin-arm64` zip and installable via the `nlink-jp/homebrew-tap` cask.
 
 ### Fixed
 
