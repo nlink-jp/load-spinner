@@ -64,11 +64,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             gpuLoad: gpuAvailable ? model.gpuLoad : nil,
             gpuAvailable: gpuAvailable
         )
+        let showLabels = model.settings.showLabels
         let specs = plans.map { plan in
-            SpinnerView.Spec(shape: plan.shape, colorHex: plan.colorHex, rpm: rotationsPerMinute(forLoad: plan.load))
+            SpinnerView.Spec(
+                shape: plan.shape,
+                colorHex: plan.colorHex,
+                rpm: rotationsPerMinute(forLoad: plan.load),
+                label: showLabels ? label(for: plan.source) : nil
+            )
         }
         spinnerView.update(specs: specs)
         statusItem.length = spinnerView.preferredWidth
+    }
+
+    private func label(for source: LoadSource) -> String {
+        switch source {
+        case .cpu: return "CPU"
+        case .gpu: return "GPU"
+        case .combined: return "MAX"
+        }
     }
 
     @objc private func togglePopover() {
@@ -78,9 +92,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             // Build the SwiftUI panel only while it is on screen so it does no
             // rendering work when closed.
-            popover.contentViewController = NSHostingController(
+            let hosting = NSHostingController(
                 rootView: PanelView(model: model, onQuit: { NSApplication.shared.terminate(nil) })
             )
+            // Size the popover to the SwiftUI content's ideal size, otherwise the
+            // top of the panel is clipped.
+            hosting.sizingOptions = [.preferredContentSize]
+            popover.contentViewController = hosting
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }

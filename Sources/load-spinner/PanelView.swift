@@ -63,7 +63,7 @@ struct PanelView: View {
             footer
         }
         .padding(16)
-        .frame(width: 300)
+        .frame(width: 340)
     }
 
     private var header: some View {
@@ -107,22 +107,28 @@ struct PanelView: View {
     private var historyChart: some View {
         let cpuColor = Color(hex: model.settings.cpuColorHex) ?? .blue
         let gpuColor = Color(hex: model.settings.gpuColorHex) ?? .teal
+        // Anchor the newest sample to the right edge and keep a fixed 3-minute
+        // window, so the line scrolls in from the right instead of compressing.
+        let capacity = model.historyCapacity
+        let cpuOffset = capacity - model.cpuHistory.count
+        let gpuOffset = capacity - model.gpuHistory.count
         return VStack(alignment: .leading, spacing: 4) {
             Text("過去 3 分").font(.caption2).foregroundStyle(.secondary)
             Chart {
                 ForEach(Array(model.cpuHistory.enumerated()), id: \.offset) { index, value in
-                    LineMark(x: .value("t", index), y: .value("load", value * 100), series: .value("s", "CPU"))
+                    LineMark(x: .value("t", cpuOffset + index), y: .value("load", value * 100), series: .value("s", "CPU"))
                         .foregroundStyle(cpuColor)
-                    AreaMark(x: .value("t", index), y: .value("load", value * 100), series: .value("s", "CPU"))
+                    AreaMark(x: .value("t", cpuOffset + index), y: .value("load", value * 100), series: .value("s", "CPU"))
                         .foregroundStyle(cpuColor.opacity(0.12))
                 }
                 if model.gpuAvailable {
                     ForEach(Array(model.gpuHistory.enumerated()), id: \.offset) { index, value in
-                        LineMark(x: .value("t", index), y: .value("load", value * 100), series: .value("s", "GPU"))
+                        LineMark(x: .value("t", gpuOffset + index), y: .value("load", value * 100), series: .value("s", "GPU"))
                             .foregroundStyle(gpuColor)
                     }
                 }
             }
+            .chartXScale(domain: 0...(capacity - 1))
             .chartYScale(domain: 0...100)
             .chartXAxis(.hidden)
             .chartYAxis { AxisMarks(values: [0, 50, 100]) }
@@ -143,6 +149,10 @@ struct PanelView: View {
             .labelsHidden()
 
             configRows
+
+            Toggle("アイコンにラベルを表示", isOn: boolBinding(\.showLabels))
+                .toggleStyle(.switch)
+                .font(.subheadline)
 
             Toggle("ログイン時に起動", isOn: loginBinding)
                 .toggleStyle(.switch)
@@ -172,27 +182,27 @@ struct PanelView: View {
         shape: WritableKeyPath<AppSettings, IndicatorShape>,
         color: WritableKeyPath<AppSettings, String>
     ) -> some View {
-        HStack(spacing: 10) {
-            Text(title).font(.subheadline).frame(width: 38, alignment: .leading)
+        HStack(spacing: 8) {
+            Text(title).font(.subheadline).frame(width: 34, alignment: .leading)
             Picker("", selection: shapeBinding(shape)) {
                 Text("● 丸").tag(IndicatorShape.circle)
                 Text("■ 四角").tag(IndicatorShape.square)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 128)
-            Spacer()
+            .frame(width: 104)
+            Spacer(minLength: 8)
             colorSwatches(color)
         }
     }
 
     private func colorSwatches(_ keyPath: WritableKeyPath<AppSettings, String>) -> some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 6) {
             ForEach(indicatorPalette, id: \.self) { hex in
                 let selected = model.settings[keyPath: keyPath].caseInsensitiveCompare(hex) == .orderedSame
                 Circle()
                     .fill(Color(hex: hex) ?? .gray)
-                    .frame(width: 18, height: 18)
+                    .frame(width: 16, height: 16)
                     .overlay(Circle().stroke(Color.primary, lineWidth: selected ? 2 : 0))
                     .onTapGesture { model.updateSettings { $0[keyPath: keyPath] = hex } }
             }
@@ -230,6 +240,13 @@ struct PanelView: View {
     }
 
     private func shapeBinding(_ keyPath: WritableKeyPath<AppSettings, IndicatorShape>) -> Binding<IndicatorShape> {
+        Binding(
+            get: { model.settings[keyPath: keyPath] },
+            set: { newValue in model.updateSettings { $0[keyPath: keyPath] = newValue } }
+        )
+    }
+
+    private func boolBinding(_ keyPath: WritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
         Binding(
             get: { model.settings[keyPath: keyPath] },
             set: { newValue in model.updateSettings { $0[keyPath: keyPath] = newValue } }

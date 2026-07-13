@@ -32,3 +32,15 @@ follows semantic versioning once released.
   color). Replaces the previous settings `NSMenu`. Built lazily so it does no work
   while closed.
 - Launch-at-login toggle via `SMAppService`.
+- Optional vertical `CPU` / `GPU` / `MAX` badges next to the menu bar indicators,
+  toggled from the panel. Monochrome and inverted for the menu bar's light/dark
+  appearance, with a small gap between the two indicators in `both` mode.
+
+### Fixed
+
+- Panel popover now sizes to its SwiftUI content (`sizingOptions`) instead of
+  clipping the header; panel widened and settings rows tightened so nothing
+  overflows horizontally.
+- History chart uses a fixed 3-minute window with the newest sample anchored to
+  the right edge, so the line scrolls in from the right instead of compressing as
+  samples accumulate.

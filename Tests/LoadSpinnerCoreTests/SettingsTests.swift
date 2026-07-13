@@ -17,10 +17,24 @@ final class SettingsTests: XCTestCase {
         settings.cpuShape = .square
         settings.gpuColorHex = "#EF9F27"
         settings.launchAtLogin = true
+        settings.showLabels = true
 
         let data = settings.encoded()
         XCTAssertNotNil(data)
         XCTAssertEqual(AppSettings.decode(from: data), settings)
+    }
+
+    func testDecodeToleratesMissingFieldAndPreservesOthers() {
+        // Older persisted JSON without the showLabels field.
+        let json = """
+        {"mode":"cpu","cpuShape":"square","gpuShape":"square","combinedShape":"circle",\
+        "cpuColorHex":"#378ADD","gpuColorHex":"#5DCAA5","combinedColorHex":"#5DCAA5","launchAtLogin":true}
+        """
+        let decoded = AppSettings.decode(from: Data(json.utf8))
+        XCTAssertEqual(decoded.mode, .cpu)
+        XCTAssertEqual(decoded.cpuShape, .square)
+        XCTAssertTrue(decoded.launchAtLogin)
+        XCTAssertFalse(decoded.showLabels) // defaulted, other fields preserved
     }
 
     func testPaletteColorsAreValidHex() {

@@ -38,6 +38,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var gpuColorHex: String
     public var combinedColorHex: String
     public var launchAtLogin: Bool
+    /// Show a vertical "CPU"/"GPU" label next to each menu bar indicator.
+    public var showLabels: Bool
 
     public init(
         mode: DisplayMode,
@@ -47,7 +49,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         cpuColorHex: String,
         gpuColorHex: String,
         combinedColorHex: String,
-        launchAtLogin: Bool
+        launchAtLogin: Bool,
+        showLabels: Bool
     ) {
         self.mode = mode
         self.cpuShape = cpuShape
@@ -57,6 +60,23 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.gpuColorHex = gpuColorHex
         self.combinedColorHex = combinedColorHex
         self.launchAtLogin = launchAtLogin
+        self.showLabels = showLabels
+    }
+
+    /// Tolerant decoding: any field missing from persisted JSON (e.g. after a new
+    /// field is added) falls back to its default rather than failing the whole blob.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = AppSettings.default
+        mode = try container.decodeIfPresent(DisplayMode.self, forKey: .mode) ?? fallback.mode
+        cpuShape = try container.decodeIfPresent(IndicatorShape.self, forKey: .cpuShape) ?? fallback.cpuShape
+        gpuShape = try container.decodeIfPresent(IndicatorShape.self, forKey: .gpuShape) ?? fallback.gpuShape
+        combinedShape = try container.decodeIfPresent(IndicatorShape.self, forKey: .combinedShape) ?? fallback.combinedShape
+        cpuColorHex = try container.decodeIfPresent(String.self, forKey: .cpuColorHex) ?? fallback.cpuColorHex
+        gpuColorHex = try container.decodeIfPresent(String.self, forKey: .gpuColorHex) ?? fallback.gpuColorHex
+        combinedColorHex = try container.decodeIfPresent(String.self, forKey: .combinedColorHex) ?? fallback.combinedColorHex
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? fallback.launchAtLogin
+        showLabels = try container.decodeIfPresent(Bool.self, forKey: .showLabels) ?? fallback.showLabels
     }
 
     public static let `default` = AppSettings(
@@ -67,7 +87,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         cpuColorHex: "#378ADD",
         gpuColorHex: "#5DCAA5",
         combinedColorHex: "#5DCAA5",
-        launchAtLogin: false
+        launchAtLogin: false,
+        showLabels: false
     )
 }
 
