@@ -15,6 +15,11 @@ NOTARY_PROFILE    ?= nlink-jp-notary
 CODESIGN_SCRIPT := scripts/codesign-darwin-app.sh
 NOTARIZE_SCRIPT := scripts/notarize-darwin-app.sh
 
+# App icon: a 1024x1024 source PNG (regenerate with `swift scripts/gen-icon.swift`).
+# build-app generates AppIcon.icns into the bundle's Resources. Missing source →
+# app builds without an icon.
+ICON_SRC := assets/AppIcon-1024.png
+
 # Homebrew tap generation (see scripts/release-brew.mk). After `make package`,
 # `make brew` generates this cask from the built darwin-arm64 zip into the local
 # nlink-jp/homebrew-tap checkout. The zip is named after $(NAME); the .app inside
@@ -41,6 +46,12 @@ build-app: build
 	@sed 's/$${VERSION}/$(VERSION)/g; s/$${BUNDLE_ID}/$(BUNDLE_ID)/g; s/$${APP_NAME}/$(APP_NAME)/g' \
 		Info.plist > $(APP_BUNDLE)/Contents/Info.plist
 	@printf 'APPL????' > $(APP_BUNDLE)/Contents/PkgInfo
+	@mkdir -p $(APP_BUNDLE)/Contents/Resources
+	@if [ -f "$(ICON_SRC)" ]; then \
+		scripts/make-icns.sh "$(ICON_SRC)" $(APP_BUNDLE)/Contents/Resources/AppIcon.icns; \
+	else \
+		echo "[icon] WARN: $(ICON_SRC) not found — building without an app icon"; \
+	fi
 	@$(CODESIGN_SCRIPT) $(APP_BUNDLE) "$(CODESIGN_IDENTITY)"
 	@echo "Built $(APP_BUNDLE) ($(VERSION))"
 
