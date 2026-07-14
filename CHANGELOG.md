@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [0.2.0] - 2026-07-13
+
+### Added
+
+- Load-linked color mode — instead of a fixed color, the indicator and the panel
+  gauge shift color with load along a teal → amber → coral gradient, so color
+  conveys the level while speed conveys the intensity. Toggle in the panel
+  (単色 / 負荷連動).
+
+### Changed
+
+- The history chart now uses fixed, distinct colors (CPU green, GPU blue) with a
+  legend, so the two lines stay distinguishable regardless of the color mode.
+
 ## [0.1.1] - 2026-07-13
 
 ### Added
