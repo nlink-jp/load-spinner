@@ -45,7 +45,7 @@ settings:
 
 - Display mode: max (higher of CPU/GPU), CPU only, GPU only, or both (two indicators)
 - Symbol: circle or square — set per source (CPU and GPU independently in both mode)
-- Color — set per source
+- Color — a fixed per-source color, or a load-linked gradient (teal → amber → coral) that shifts with load
 - Launch at login
 
 When GPU utilization cannot be read on the system, GPU-related options are

@@ -40,7 +40,7 @@ notarize + staple して `dist/load-spinner-v<version>-darwin-arm64.zip` を生�
 
 - 表示モード: 高い方（CPU/GPUの高い方）／ CPUのみ ／ GPUのみ ／ 2つ表示
 - シンボル: 丸 ／ 四角（2つ表示時は CPU・GPU 個別）
-- 色（CPU・GPU 個別）
+- 色: 固定色（CPU・GPU 個別）／ 負荷連動グラデーション（ティール→アンバー→コーラル）
 - ログイン時に起動
 
 システムで GPU 使用率が取得できない場合、GPU 関連の選択肢は自動的に無効化され、CPU のみで

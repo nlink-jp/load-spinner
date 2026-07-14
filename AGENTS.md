@@ -32,7 +32,8 @@ Sources/
     CPUSampler.swift     CPUSampling protocol, MachCPUSampler, LoadMonitor
     GPUSampler.swift     GPUSampling, gpuUtilization(fromPerformanceStatistics:), IOKitGPUSampler
     Indicator.swift      indicatorPlans(...) — mode+loads -> IndicatorPlan[], GPU degrade
-    Settings.swift       IndicatorShape/DisplayMode enums, AppSettings, palette
+    Gradient.swift       loadGradientColorHex(forLoad:) — teal->amber->coral load color
+    Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
     AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, popover
@@ -69,6 +70,11 @@ Resources/Info.plist.in  Bundle template (@VERSION@, @BUNDLE_ID@)
   bar carries the animation), and idle CPU is ~1%.
 - **GPU degrade.** GPU availability is probed once at launch (`IOKitGPUSampler`).
   When unavailable, `indicatorPlans` drops GPU and the panel hides GPU modes.
+- **Color mode.** `ColorMode.gradient` colors the indicator/gauge by current load
+  (`loadGradientColorHex`); the history chart deliberately keeps fixed CPU-green /
+  GPU-blue lines so the two series stay distinguishable. The native SwiftUI
+  `ColorPicker` was tried and dropped — it doesn't present from a menu bar
+  accessory app; fixed mode uses an inline swatch row instead.
 - **Version.** Injected into Info.plist by `make build`; read at runtime via
   `CFBundleShortVersionString`, falling back to `dev` outside a bundle.
 

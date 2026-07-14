@@ -65,10 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             gpuAvailable: gpuAvailable
         )
         let showLabels = model.settings.showLabels
+        let gradient = model.settings.colorMode == .gradient
         let specs = plans.map { plan in
             SpinnerView.Spec(
                 shape: plan.shape,
-                colorHex: plan.colorHex,
+                colorHex: gradient ? loadGradientColorHex(forLoad: plan.load) : plan.colorHex,
                 rpm: rotationsPerMinute(forLoad: plan.load),
                 label: showLabels ? label(for: plan.source) : nil
             )

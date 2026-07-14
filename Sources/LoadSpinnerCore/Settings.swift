@@ -7,6 +7,14 @@ public enum IndicatorShape: String, Codable, Sendable, CaseIterable {
     case square
 }
 
+/// How the indicator color is chosen.
+public enum ColorMode: String, Codable, Sendable, CaseIterable {
+    /// Use the per-source color the user selected.
+    case fixed
+    /// Derive the color from the current load (cool = idle, warm = busy).
+    case gradient
+}
+
 /// Which source(s) drive the menu bar indicator(s).
 public enum DisplayMode: String, Codable, Sendable, CaseIterable {
     /// One indicator showing the higher of CPU and GPU.
@@ -40,6 +48,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var launchAtLogin: Bool
     /// Show a vertical "CPU"/"GPU" label next to each menu bar indicator.
     public var showLabels: Bool
+    /// Fixed per-source color, or a load-linked gradient.
+    public var colorMode: ColorMode
 
     public init(
         mode: DisplayMode,
@@ -50,7 +60,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         gpuColorHex: String,
         combinedColorHex: String,
         launchAtLogin: Bool,
-        showLabels: Bool
+        showLabels: Bool,
+        colorMode: ColorMode
     ) {
         self.mode = mode
         self.cpuShape = cpuShape
@@ -61,6 +72,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.combinedColorHex = combinedColorHex
         self.launchAtLogin = launchAtLogin
         self.showLabels = showLabels
+        self.colorMode = colorMode
     }
 
     /// Tolerant decoding: any field missing from persisted JSON (e.g. after a new
@@ -77,6 +89,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         combinedColorHex = try container.decodeIfPresent(String.self, forKey: .combinedColorHex) ?? fallback.combinedColorHex
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? fallback.launchAtLogin
         showLabels = try container.decodeIfPresent(Bool.self, forKey: .showLabels) ?? fallback.showLabels
+        colorMode = try container.decodeIfPresent(ColorMode.self, forKey: .colorMode) ?? fallback.colorMode
     }
 
     public static let `default` = AppSettings(
@@ -88,7 +101,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         gpuColorHex: "#5DCAA5",
         combinedColorHex: "#5DCAA5",
         launchAtLogin: false,
-        showLabels: false
+        showLabels: false,
+        colorMode: .fixed
     )
 }
 

@@ -87,7 +87,7 @@ struct PanelView: View {
     private func liveCard(title: String, load: Double, shape: IndicatorShape, colorHex: String, enabled: Bool) -> some View {
         HStack(spacing: 10) {
             if enabled {
-                LoadRing(shape: shape, color: Color(hex: colorHex) ?? .teal, load: load)
+                LoadRing(shape: shape, color: effectiveColor(fixedHex: colorHex, load: load), load: load)
             } else {
                 IndicatorShapePath(kind: shape)
                     .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 3))
@@ -105,19 +105,30 @@ struct PanelView: View {
     }
 
     private var historyChart: some View {
-        let cpuColor = Color(hex: model.settings.cpuColorHex) ?? .blue
-        let gpuColor = Color(hex: model.settings.gpuColorHex) ?? .teal
+        // The history chart uses fixed, distinct colors (CPU green, GPU blue) —
+        // independent of the indicator color mode — so the two lines are always
+        // distinguishable.
+        let cpuColor = Color.green
+        let gpuColor = Color.blue
         // Anchor the newest sample to the right edge and keep a fixed 3-minute
         // window, so the line scrolls in from the right instead of compressing.
         let capacity = model.historyCapacity
         let cpuOffset = capacity - model.cpuHistory.count
         let gpuOffset = capacity - model.gpuHistory.count
         return VStack(alignment: .leading, spacing: 4) {
-            Text("過去 3 分").font(.caption2).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text("過去 3 分").font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                legendChip(color: cpuColor, label: "CPU")
+                if model.gpuAvailable {
+                    legendChip(color: gpuColor, label: "GPU")
+                }
+            }
             Chart {
                 ForEach(Array(model.cpuHistory.enumerated()), id: \.offset) { index, value in
                     LineMark(x: .value("t", cpuOffset + index), y: .value("load", value * 100), series: .value("s", "CPU"))
                         .foregroundStyle(cpuColor)
+                        .lineStyle(StrokeStyle(lineWidth: 2))
                     AreaMark(x: .value("t", cpuOffset + index), y: .value("load", value * 100), series: .value("s", "CPU"))
                         .foregroundStyle(cpuColor.opacity(0.12))
                 }
@@ -125,6 +136,7 @@ struct PanelView: View {
                     ForEach(Array(model.gpuHistory.enumerated()), id: \.offset) { index, value in
                         LineMark(x: .value("t", gpuOffset + index), y: .value("load", value * 100), series: .value("s", "GPU"))
                             .foregroundStyle(gpuColor)
+                            .lineStyle(StrokeStyle(lineWidth: 2))
                     }
                 }
             }
@@ -136,6 +148,13 @@ struct PanelView: View {
         }
     }
 
+    private func legendChip(color: Color, label: String) -> some View {
+        HStack(spacing: 3) {
+            Rectangle().fill(color).frame(width: 12, height: 2)
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
     // MARK: - Settings
 
     private var settingsSection: some View {
@@ -144,6 +163,13 @@ struct PanelView: View {
                 ForEach(availableModes, id: \.self) { mode in
                     Text(modeLabel(mode)).tag(mode)
                 }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            Picker("色", selection: colorModeBinding) {
+                Text("単色").tag(ColorMode.fixed)
+                Text("負荷連動").tag(ColorMode.gradient)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -192,7 +218,11 @@ struct PanelView: View {
             .labelsHidden()
             .frame(width: 104)
             Spacer(minLength: 8)
-            colorSwatches(color)
+            if model.settings.colorMode == .fixed {
+                colorSwatches(color)
+            } else {
+                gradientPreview
+            }
         }
     }
 
@@ -207,6 +237,16 @@ struct PanelView: View {
                     .onTapGesture { model.updateSettings { $0[keyPath: keyPath] = hex } }
             }
         }
+    }
+
+    private var gradientPreview: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(LinearGradient(
+                colors: loadGradientStops.map { Color(hex: $0.hex) ?? .gray },
+                startPoint: .leading,
+                endPoint: .trailing
+            ))
+            .frame(width: 104, height: 14)
     }
 
     private var footer: some View {
@@ -237,6 +277,22 @@ struct PanelView: View {
             get: { model.settings.mode },
             set: { newValue in model.updateSettings { $0.mode = newValue } }
         )
+    }
+
+    private var colorModeBinding: Binding<ColorMode> {
+        Binding(
+            get: { model.settings.colorMode },
+            set: { newValue in model.updateSettings { $0.colorMode = newValue } }
+        )
+    }
+
+    /// The color to draw for a source: its fixed color, or the load-linked
+    /// gradient color when the gradient color mode is active.
+    private func effectiveColor(fixedHex: String, load: Double) -> Color {
+        if model.settings.colorMode == .gradient {
+            return Color(hex: loadGradientColorHex(forLoad: load)) ?? .teal
+        }
+        return Color(hex: fixedHex) ?? .teal
     }
 
     private func shapeBinding(_ keyPath: WritableKeyPath<AppSettings, IndicatorShape>) -> Binding<IndicatorShape> {
