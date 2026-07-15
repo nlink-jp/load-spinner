@@ -50,6 +50,16 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var showLabels: Bool
     /// Fixed per-source color, or a load-linked gradient.
     public var colorMode: ColorMode
+    /// Show the memory gauge (a filling ring) in the menu bar. Independent of
+    /// `mode`: memory is additive, not an alternative to CPU/GPU.
+    public var showMemory: Bool
+    /// Frame used for the memory gauge. The gauge fills with the used ratio.
+    public var memoryShape: IndicatorShape
+    /// How the memory gauge is colored: a fixed accent, or a used-ratio gradient.
+    /// The same two-way axis as CPU/GPU's `colorMode`, but independent of it.
+    public var memoryColorMode: ColorMode
+    /// Fixed accent color for the memory gauge (used when `memoryColorMode == .fixed`).
+    public var memoryColorHex: String
 
     public init(
         mode: DisplayMode,
@@ -61,7 +71,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
         combinedColorHex: String,
         launchAtLogin: Bool,
         showLabels: Bool,
-        colorMode: ColorMode
+        colorMode: ColorMode,
+        showMemory: Bool,
+        memoryShape: IndicatorShape,
+        memoryColorMode: ColorMode,
+        memoryColorHex: String
     ) {
         self.mode = mode
         self.cpuShape = cpuShape
@@ -73,6 +87,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.launchAtLogin = launchAtLogin
         self.showLabels = showLabels
         self.colorMode = colorMode
+        self.showMemory = showMemory
+        self.memoryShape = memoryShape
+        self.memoryColorMode = memoryColorMode
+        self.memoryColorHex = memoryColorHex
     }
 
     /// Tolerant decoding: any field missing from persisted JSON (e.g. after a new
@@ -90,6 +108,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? fallback.launchAtLogin
         showLabels = try container.decodeIfPresent(Bool.self, forKey: .showLabels) ?? fallback.showLabels
         colorMode = try container.decodeIfPresent(ColorMode.self, forKey: .colorMode) ?? fallback.colorMode
+        showMemory = try container.decodeIfPresent(Bool.self, forKey: .showMemory) ?? fallback.showMemory
+        memoryShape = try container.decodeIfPresent(IndicatorShape.self, forKey: .memoryShape) ?? fallback.memoryShape
+        memoryColorMode = try container.decodeIfPresent(ColorMode.self, forKey: .memoryColorMode) ?? fallback.memoryColorMode
+        memoryColorHex = try container.decodeIfPresent(String.self, forKey: .memoryColorHex) ?? fallback.memoryColorHex
     }
 
     public static let `default` = AppSettings(
@@ -102,7 +124,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
         combinedColorHex: "#5DCAA5",
         launchAtLogin: false,
         showLabels: false,
-        colorMode: .fixed
+        colorMode: .fixed,
+        showMemory: false,
+        memoryShape: .circle,
+        memoryColorMode: .gradient,
+        memoryColorHex: "#7F77DD"
     )
 }
 

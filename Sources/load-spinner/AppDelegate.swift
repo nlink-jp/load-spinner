@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let cpuMonitor = LoadMonitor()
     private let gpuSampler = IOKitGPUSampler()
+    private let memorySampler = MachMemorySampler()
     private var gpuAvailable = false
     private var sampleTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -52,7 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func tick() {
         let cpu = cpuMonitor.refresh()
         let gpu = gpuAvailable ? gpuSampler.sample() : nil
-        model.record(cpu: cpu, gpu: gpu)
+        let memory = memorySampler.sample().map(memoryReading(from:)) ?? .zero
+        model.record(cpu: cpu, gpu: gpu, memory: memory)
         refreshIndicators()
     }
 
@@ -66,16 +68,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         let showLabels = model.settings.showLabels
         let gradient = model.settings.colorMode == .gradient
-        let specs = plans.map { plan in
+        var specs = plans.map { plan in
             SpinnerView.Spec(
                 shape: plan.shape,
                 colorHex: gradient ? loadGradientColorHex(forLoad: plan.load) : plan.colorHex,
-                rpm: rotationsPerMinute(forLoad: plan.load),
+                kind: .spinner(rpm: rotationsPerMinute(forLoad: plan.load)),
                 label: showLabels ? label(for: plan.source) : nil
             )
         }
+        if model.settings.showMemory {
+            specs.append(memorySpec(showLabels: showLabels))
+        }
         spinnerView.update(specs: specs)
         statusItem.length = spinnerView.preferredWidth
+    }
+
+    /// Build the memory *gauge* spec: fill = used ratio, color = fixed or gradient.
+    private func memorySpec(showLabels: Bool) -> SpinnerView.Spec {
+        let reading = model.memoryReading
+        let settings = model.settings
+        return SpinnerView.Spec(
+            shape: settings.memoryShape,
+            colorHex: memoryGaugeColorHex(
+                mode: settings.memoryColorMode,
+                fixedHex: settings.memoryColorHex,
+                usedRatio: reading.usedRatio
+            ),
+            kind: .gauge(fill: reading.usedRatio),
+            label: showLabels ? "MEM" : nil
+        )
     }
 
     private func label(for source: LoadSource) -> String {

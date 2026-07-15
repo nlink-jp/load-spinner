@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [Unreleased]
+
+### Added
+
+- Memory monitoring, rendered as a filling **gauge** (a *level*) rather than a
+  spinner (a *rate*): a ring that fills with the used ratio and does not move. See
+  [docs/adr/0002-memory-as-filling-gauge.md](docs/adr/0002-memory-as-filling-gauge.md).
+  - Menu bar: an optional memory gauge (toggle in the panel), reusing the circle /
+    rounded-square frame but filling `strokeEnd` to the used ratio (static — it
+    does not spin). Shape-only, like the CPU/GPU spinners.
+  - Gauge color: a fixed accent, or a used-ratio gradient (teal → amber → coral)
+    that warms as memory fills — the same color axis as CPU/GPU (independent
+    setting), defaulting to gradient.
+  - Panel: a memory donut (used % in the hole, used / total GB), shown regardless of
+    the menu bar toggle, plus a third memory line (used ratio) on the history chart.
+- `LoadSpinnerCore` memory logic, pure and tested: `memoryReading(from:)` derives
+  Activity-Monitor-style *Memory Used* (App + Wired + Compressed, excluding
+  purgeable) — deliberately not `free`, which is misleadingly near-zero on macOS —
+  plus the fixed/gradient gauge-color mapping. Live counters come from
+  `MachMemorySampler` (`host_statistics64` `HOST_VM_INFO64` + `hw.memsize`).
+
 ## [0.2.0] - 2026-07-13
 
 ### Added

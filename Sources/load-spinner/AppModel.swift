@@ -9,9 +9,11 @@ final class AppModel: ObservableObject {
     @Published var settings: AppSettings
     @Published private(set) var cpuLoad: Double = 0
     @Published private(set) var gpuLoad: Double = 0
+    @Published private(set) var memoryReading: MemoryReading = .zero
     @Published private(set) var gpuAvailable: Bool
     @Published private(set) var cpuHistory: [Double] = []
     @Published private(set) var gpuHistory: [Double] = []
+    @Published private(set) var memoryHistory: [Double] = []
 
     /// Roughly three minutes of 1 Hz samples.
     let historyCapacity = 180
@@ -25,11 +27,13 @@ final class AppModel: ObservableObject {
     }
 
     /// Record a fresh sample, updating live values and the history buffers.
-    func record(cpu: Double, gpu: Double?) {
+    func record(cpu: Double, gpu: Double?, memory: MemoryReading) {
         cpuLoad = cpu
         gpuLoad = gpu ?? 0
+        memoryReading = memory
         appendClamped(&cpuHistory, cpu)
         appendClamped(&gpuHistory, gpu ?? 0)
+        appendClamped(&memoryHistory, memory.usedRatio)
     }
 
     /// Mutate and persist the settings in one step.

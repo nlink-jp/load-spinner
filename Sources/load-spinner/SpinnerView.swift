@@ -1,17 +1,30 @@
 import AppKit
 import LoadSpinnerCore
 
-/// A layer-backed menu bar view that draws one or two fixed frames (circle or
-/// rounded square) with a lit segment travelling around each perimeter, and an
-/// optional vertical text badge next to each frame.
+/// A layer-backed menu bar view that draws one or more indicators. Two kinds
+/// share the same circle / rounded-square frame vocabulary:
 ///
-/// The frames never rotate; only the lit segments move, each at a speed set by
-/// its `rpm`. Driven by animating each `CAShapeLayer`'s `lineDashPhase`.
+/// - **spinner** (CPU/GPU, a *rate*): the frame stays fixed while a lit segment
+///   travels around its perimeter, at a speed set by `rpm`.
+/// - **gauge** (memory, a *level*): the frame's stroke fills from the top in
+///   proportion to `fill`, and does not move. Its stillness signals "this is a
+///   level, not a rate."
+///
+/// Each indicator may carry an optional vertical source badge ("CPU"/"GPU").
 final class SpinnerView: NSView {
+    /// What an indicator represents and how it animates.
+    enum Kind: Equatable {
+        /// A rate: a lit segment travels the perimeter at `rpm`.
+        case spinner(rpm: Double)
+        /// A level: the stroke fills to `fill` (0...1), static.
+        case gauge(fill: Double)
+    }
+
     struct Spec: Equatable {
         var shape: IndicatorShape
         var colorHex: String
-        var rpm: Double
+        var kind: Kind
+        /// Vertical source badge drawn to the left of the frame.
         var label: String?
     }
 
@@ -21,6 +34,7 @@ final class SpinnerView: NSView {
         let badge = CALayer()
         let text = CATextLayer()
         var shape: IndicatorShape = .circle
+        var isGauge = false
         var rpm: Double = 8
         var phase: CGFloat = 0
         var perimeter: CGFloat = 1
@@ -72,9 +86,26 @@ final class SpinnerView: NSView {
         for (index, spec) in specs.enumerated() {
             let cell = cells[index]
             cell.shape = spec.shape
-            cell.rpm = spec.rpm
             cell.label = spec.label
             cell.highlight.strokeColor = (NSColor(hex: spec.colorHex) ?? .systemTeal).cgColor
+
+            switch spec.kind {
+            case .spinner(let rpm):
+                cell.isGauge = false
+                cell.rpm = rpm
+                cell.highlight.strokeStart = 0
+                cell.highlight.strokeEnd = 1
+            case .gauge(let fill):
+                cell.isGauge = true
+                cell.rpm = 0
+                cell.phase = 0
+                cell.highlight.lineDashPattern = nil
+                cell.highlight.lineDashPhase = 0
+                cell.highlight.strokeStart = 0
+                // Animatable: the fill eases smoothly to its new value.
+                cell.highlight.strokeEnd = CGFloat(min(max(fill, 0), 1))
+            }
+
             cell.text.string = spec.label ?? ""
             cell.text.isHidden = spec.label == nil
             cell.badge.isHidden = spec.label == nil
@@ -84,7 +115,8 @@ final class SpinnerView: NSView {
     }
 
     private func width(for cell: Cell) -> CGFloat {
-        (cell.label != nil ? labelColumnWidth : 0) + iconWidth
+        let labelW = cell.label != nil ? labelColumnWidth : 0
+        return labelW + iconWidth
     }
 
     private func rebuildCells(count: Int) {
@@ -128,14 +160,13 @@ final class SpinnerView: NSView {
 
         var originX: CGFloat = 0
         for (index, cell) in cells.enumerated() {
-            let hasLabel = cell.label != nil
-            let currentLabelWidth = hasLabel ? labelColumnWidth : 0
-            if hasLabel {
-                layoutLabel(cell, centerX: originX + currentLabelWidth / 2, scale: scale)
+            let labelW = cell.label != nil ? labelColumnWidth : 0
+            if cell.label != nil {
+                layoutLabel(cell, centerX: originX + labelW / 2, scale: scale)
             }
-            let iconRect = NSRect(x: originX + currentLabelWidth, y: 0, width: iconWidth, height: bounds.height)
+            let iconRect = NSRect(x: originX + labelW, y: 0, width: iconWidth, height: bounds.height)
             layoutIcon(cell, in: iconRect, scale: scale)
-            originX += currentLabelWidth + iconWidth
+            originX += labelW + iconWidth
             if index < cells.count - 1 { originX += cellGap }
         }
     }
@@ -173,24 +204,45 @@ final class SpinnerView: NSView {
             height: side
         )
 
-        let path: CGPath
+        let framePath: CGPath
         switch cell.shape {
         case .circle:
-            path = CGPath(ellipseIn: square, transform: nil)
+            framePath = CGPath(ellipseIn: square, transform: nil)
             cell.perimeter = .pi * side
         case .square:
             let radius = side * 0.22
-            path = CGPath(roundedRect: square, cornerWidth: radius, cornerHeight: radius, transform: nil)
+            framePath = CGPath(roundedRect: square, cornerWidth: radius, cornerHeight: radius, transform: nil)
             cell.perimeter = 4 * (side - 2 * radius) + 2 * .pi * radius
         }
 
-        for shapeLayer in [cell.track, cell.highlight] {
-            shapeLayer.frame = bounds
-            shapeLayer.path = path
-            shapeLayer.contentsScale = scale
+        cell.track.frame = bounds
+        cell.track.path = framePath
+        cell.track.contentsScale = scale
+        cell.highlight.frame = bounds
+        cell.highlight.contentsScale = scale
+
+        if cell.isGauge {
+            cell.highlight.lineDashPattern = nil
+            switch cell.shape {
+            case .circle:
+                // Fill clockwise from the top (12 o'clock) so the ring reads as a
+                // conventional gauge. Layer coordinates are y-up, so the top is at
+                // +π/2 and clockwise means a decreasing sweep.
+                let center = CGPoint(x: square.midX, y: square.midY)
+                let arc = CGMutablePath()
+                arc.addArc(
+                    center: center, radius: side / 2,
+                    startAngle: .pi / 2, endAngle: .pi / 2 - 2 * .pi, clockwise: true
+                )
+                cell.highlight.path = arc
+            case .square:
+                cell.highlight.path = framePath
+            }
+        } else {
+            cell.highlight.path = framePath
+            let lit = cell.perimeter * litFraction
+            cell.highlight.lineDashPattern = [NSNumber(value: Double(lit)), NSNumber(value: Double(cell.perimeter - lit))]
         }
-        let lit = cell.perimeter * litFraction
-        cell.highlight.lineDashPattern = [NSNumber(value: Double(lit)), NSNumber(value: Double(cell.perimeter - lit))]
     }
 
     private func startAnimating() {
@@ -202,7 +254,8 @@ final class SpinnerView: NSView {
     @objc private func step() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for cell in cells {
+        // Gauges are levels, not rates — they do not travel.
+        for cell in cells where !cell.isGauge {
             let revolutionsPerSecond = cell.rpm / 60.0
             cell.phase += CGFloat(revolutionsPerSecond / frameRate) * cell.perimeter
             if cell.phase > cell.perimeter { cell.phase -= cell.perimeter }

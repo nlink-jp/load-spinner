@@ -48,6 +48,33 @@ private struct LoadRing: View {
     }
 }
 
+/// The memory donut: a filling ring (a *level*, not a rate) with the used
+/// percentage in the hole. Fills clockwise from the top for the circle frame.
+private struct MemoryDonut: View {
+    var shape: IndicatorShape
+    var color: Color
+    var usedRatio: Double
+    var size: CGFloat = 52
+
+    var body: some View {
+        let path = IndicatorShapePath(kind: shape)
+        let ratio = max(0.0, min(usedRatio, 1))
+        return ZStack {
+            path.stroke(Color.secondary.opacity(0.2), style: StrokeStyle(lineWidth: 5))
+            path
+                .trim(from: 0, to: max(0.001, ratio))
+                .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                // Only the circle rotates to start at 12 o'clock; rotating a
+                // rounded square would just tilt the frame.
+                .rotationEffect(shape == .circle ? .degrees(-90) : .degrees(0))
+            Text(memoryPercentLabel(usedRatio: ratio))
+                .font(.system(size: 13, weight: .semibold))
+                .monospacedDigit()
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 struct PanelView: View {
     @ObservedObject var model: AppModel
     var onQuit: () -> Void
@@ -56,6 +83,7 @@ struct PanelView: View {
         VStack(alignment: .leading, spacing: 14) {
             header
             liveCards
+            memoryCard
             historyChart
             Divider()
             settingsSection
@@ -104,17 +132,50 @@ struct PanelView: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
     }
 
+    // MARK: - Memory
+
+    private var memoryCard: some View {
+        let reading = model.memoryReading
+        return HStack(spacing: 12) {
+            MemoryDonut(shape: model.settings.memoryShape, color: memoryColor(reading), usedRatio: reading.usedRatio)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("メモリ").font(.caption).foregroundStyle(.secondary)
+                Text(memoryGBText(reading)).font(.callout).monospacedDigit()
+            }
+            Spacer()
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
+    }
+
+    /// The donut color: fixed accent, or a used-ratio gradient — matching the
+    /// menu-bar gauge and the CPU/GPU color axis.
+    private func memoryColor(_ reading: MemoryReading) -> Color {
+        let hex = memoryGaugeColorHex(
+            mode: model.settings.memoryColorMode,
+            fixedHex: model.settings.memoryColorHex,
+            usedRatio: reading.usedRatio
+        )
+        return Color(hex: hex) ?? .teal
+    }
+
+    private func memoryGBText(_ reading: MemoryReading) -> String {
+        String(format: "%.1f / %.1f GB", gigabytes(reading.usedBytes), gigabytes(reading.totalBytes))
+    }
+
     private var historyChart: some View {
         // The history chart uses fixed, distinct colors (CPU green, GPU blue) —
         // independent of the indicator color mode — so the two lines are always
         // distinguishable.
         let cpuColor = Color.green
         let gpuColor = Color.blue
+        let memoryLineColor = Color.purple
         // Anchor the newest sample to the right edge and keep a fixed 3-minute
         // window, so the line scrolls in from the right instead of compressing.
         let capacity = model.historyCapacity
         let cpuOffset = capacity - model.cpuHistory.count
         let gpuOffset = capacity - model.gpuHistory.count
+        let memoryOffset = capacity - model.memoryHistory.count
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text("過去 3 分").font(.caption2).foregroundStyle(.secondary)
@@ -123,6 +184,7 @@ struct PanelView: View {
                 if model.gpuAvailable {
                     legendChip(color: gpuColor, label: "GPU")
                 }
+                legendChip(color: memoryLineColor, label: "MEM")
             }
             Chart {
                 ForEach(Array(model.cpuHistory.enumerated()), id: \.offset) { index, value in
@@ -138,6 +200,12 @@ struct PanelView: View {
                             .foregroundStyle(gpuColor)
                             .lineStyle(StrokeStyle(lineWidth: 2))
                     }
+                }
+                // Memory (used ratio) — always available, on the same 0...100 axis.
+                ForEach(Array(model.memoryHistory.enumerated()), id: \.offset) { index, value in
+                    LineMark(x: .value("t", memoryOffset + index), y: .value("load", value * 100), series: .value("s", "MEM"))
+                        .foregroundStyle(memoryLineColor)
+                        .lineStyle(StrokeStyle(lineWidth: 2))
                 }
             }
             .chartXScale(domain: 0...(capacity - 1))
@@ -180,9 +248,47 @@ struct PanelView: View {
                 .toggleStyle(.switch)
                 .font(.subheadline)
 
+            Divider()
+            memorySettings
+
             Toggle("ログイン時に起動", isOn: loginBinding)
                 .toggleStyle(.switch)
                 .font(.subheadline)
+        }
+    }
+
+    /// Memory-specific controls: menu-bar visibility, frame shape, and color mode
+    /// (all also restyle the panel donut above). The gauge fills with the used
+    /// ratio; its color is a fixed accent or a used-ratio gradient.
+    private var memorySettings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle("メモリをメニューバーに表示", isOn: boolBinding(\.showMemory))
+                .toggleStyle(.switch)
+                .font(.subheadline)
+
+            HStack(spacing: 8) {
+                Text("メモリ").font(.subheadline).frame(width: 34, alignment: .leading)
+                Picker("", selection: shapeBinding(\.memoryShape)) {
+                    Text("● 丸").tag(IndicatorShape.circle)
+                    Text("■ 四角").tag(IndicatorShape.square)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 104)
+                Spacer(minLength: 8)
+                if model.settings.memoryColorMode == .fixed {
+                    colorSwatches(\.memoryColorHex)
+                } else {
+                    gradientPreview
+                }
+            }
+
+            Picker("メモリ色", selection: memoryColorModeBinding) {
+                Text("単色").tag(ColorMode.fixed)
+                Text("使用率連動").tag(ColorMode.gradient)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
     }
 
@@ -285,6 +391,14 @@ struct PanelView: View {
             set: { newValue in model.updateSettings { $0.colorMode = newValue } }
         )
     }
+
+    private var memoryColorModeBinding: Binding<ColorMode> {
+        Binding(
+            get: { model.settings.memoryColorMode },
+            set: { newValue in model.updateSettings { $0.memoryColorMode = newValue } }
+        )
+    }
+
 
     /// The color to draw for a source: its fixed color, or the load-linked
     /// gradient color when the gradient color mode is active.

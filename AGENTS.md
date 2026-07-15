@@ -3,8 +3,9 @@
 ## Summary
 
 macOS menu bar app (util-series) showing CPU/GPU load as a spinning indicator
-whose speed tracks load. Swift/SwiftUI + AppKit, darwin/arm64, macOS 13+.
-Single binary also exposes a `doctor` CLI subcommand.
+whose speed tracks load, plus memory as a filling **gauge** (a level, not a rate).
+Swift/SwiftUI + AppKit, darwin/arm64, macOS 13+. Single binary also exposes a
+`doctor` CLI subcommand.
 
 ## Build & test
 
@@ -31,13 +32,15 @@ Sources/
     Speed.swift          SpeedRange + rotationsPerMinute(forLoad:)
     CPUSampler.swift     CPUSampling protocol, MachCPUSampler, LoadMonitor
     GPUSampler.swift     GPUSampling, gpuUtilization(fromPerformanceStatistics:), IOKitGPUSampler
+    Memory.swift         MemorySnapshot + memoryReading(from:), memoryGaugeColorHex (fixed/gradient) + percent/GB helpers
+    MemorySampler.swift  MemorySampling protocol, MachMemorySampler (host_statistics64 + sysctls)
     Indicator.swift      indicatorPlans(...) — mode+loads -> IndicatorPlan[], GPU degrade
     Gradient.swift       loadGradientColorHex(forLoad:) — teal->amber->coral load color
     Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
     AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, popover
-    SpinnerView.swift    Layer-backed animated indicator(s) (1-2 cells, lineDashPhase)
+    SpinnerView.swift    Layer-backed indicators: spinner cells (lineDashPhase) + gauge cells (strokeEnd fill)
     AppModel.swift       ObservableObject: live loads, history, settings
     PanelView.swift      SwiftUI panel: live gauges, Swift Charts history, settings
     SettingsStore.swift  UserDefaults-backed AppSettings persistence
@@ -70,6 +73,16 @@ Resources/Info.plist.in  Bundle template (@VERSION@, @BUNDLE_ID@)
   bar carries the animation), and idle CPU is ~1%.
 - **GPU degrade.** GPU availability is probed once at launch (`IOKitGPUSampler`).
   When unavailable, `indicatorPlans` drops GPU and the panel hides GPU modes.
+- **Memory is a gauge, not a spinner.** Memory is a *level* (how full), so it
+  fills a static ring (`strokeEnd`) instead of spinning; `SpinnerView.Spec.kind`
+  distinguishes `.spinner(rpm:)` from `.gauge(fill:)`, and `step()` skips gauge
+  cells. It is an independent `showMemory` toggle (orthogonal to `DisplayMode`) and
+  always available (no degrade path). The ring fills with the used ratio; its color
+  is a fixed accent or a used-ratio gradient (`memoryColorMode`, an independent
+  reuse of `ColorMode`, default `gradient`). "Used" follows Activity Monitor (App +
+  Wired + Compressed, minus purgeable), **not** `free` — free is near-zero on macOS
+  because the OS caches into idle RAM. (Pressure-band coloring was tried and dropped
+  as unintuitive.) See `docs/adr/0002-memory-as-filling-gauge.md`.
 - **Color mode.** `ColorMode.gradient` colors the indicator/gauge by current load
   (`loadGradientColorHex`); the history chart deliberately keeps fixed CPU-green /
   GPU-blue lines so the two series stay distinguishable. The native SwiftUI
