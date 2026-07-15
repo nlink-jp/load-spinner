@@ -279,7 +279,7 @@ struct PanelView: View {
                 if model.settings.memoryColorMode == .fixed {
                     colorSwatches(\.memoryColorHex)
                 } else {
-                    gradientPreview
+                    memoryGradientPreview
                 }
             }
 
@@ -345,10 +345,22 @@ struct PanelView: View {
         }
     }
 
+    /// The CPU/GPU load gradient preview (teal → amber → coral).
     private var gradientPreview: some View {
+        gradientPreview(stops: loadGradientStops)
+    }
+
+    /// The memory used-ratio gradient preview (blue → green → orange → red).
+    private var memoryGradientPreview: some View {
+        gradientPreview(stops: memoryGradientStops)
+    }
+
+    private func gradientPreview(stops: [(location: Double, hex: String)]) -> some View {
         RoundedRectangle(cornerRadius: 4)
             .fill(LinearGradient(
-                colors: loadGradientStops.map { Color(hex: $0.hex) ?? .gray },
+                gradient: Gradient(stops: stops.map {
+                    .init(color: Color(hex: $0.hex) ?? .gray, location: $0.location)
+                }),
                 startPoint: .leading,
                 endPoint: .trailing
             ))

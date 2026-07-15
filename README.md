@@ -53,8 +53,9 @@ history graph, and settings:
 - Symbol: circle or square — set per source (CPU and GPU independently in both mode)
 - Color — a fixed per-source color, or a load-linked gradient (teal → amber → coral) that shifts with load
 - Memory: show a filling gauge in the menu bar and choose its frame (circle/square)
-  and color — a fixed accent, or a used-ratio gradient (teal → amber → coral) that
-  warms as memory fills
+  and color — a fixed accent, or a used-ratio gradient with memory's own mapping
+  (blue → green → orange → red): barely-used RAM reads "cold," the healthy
+  mid-range sweet spot is green, and only the high range warms
 - Launch at login
 
 The panel always shows the memory donut — used percentage in the hole and used /

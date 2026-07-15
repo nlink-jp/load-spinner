@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [Unreleased]
+
+### Changed
+
+- The memory gradient now uses its own four-stop mapping — blue (idle) → green
+  (the healthy mid-range sweet spot, at 50%) → orange (75%) → red (full) — instead
+  of reusing the CPU/GPU load gradient, which colored a perfectly healthy 50%
+  usage amber. CPU/GPU keep the teal → amber → coral load gradient.
+
 ## [0.3.0] - 2026-07-15
 
 ### Added

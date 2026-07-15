@@ -35,7 +35,7 @@ Sources/
     Memory.swift         MemorySnapshot + memoryReading(from:), memoryGaugeColorHex (fixed/gradient) + percent/GB helpers
     MemorySampler.swift  MemorySampling protocol, MachMemorySampler (host_statistics64 + sysctls)
     Indicator.swift      indicatorPlans(...) — mode+loads -> IndicatorPlan[], GPU degrade
-    Gradient.swift       loadGradientColorHex(forLoad:) — teal->amber->coral load color
+    Gradient.swift       gradientColorHex(at:stops:) + load stops (teal->amber->coral) and memory stops (blue->green->orange->red)
     Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap

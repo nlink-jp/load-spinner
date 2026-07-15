@@ -38,11 +38,17 @@ rates; the thing that fills is a level*.
   Activity-Monitor-style used ratio (0...1), a continuous absolute value.
 - **Color = fixed accent or used-ratio gradient.** The gauge's color axis is the
   same two-way `ColorMode { fixed, gradient }` as the CPU/GPU spinners, but an
-  independent `memoryColorMode` setting: a fixed accent, or a gradient that warms
-  as the ring fills (cool when empty → warm when full). Default is `gradient`, so
-  out of the box the color reinforces "how full" — the one thing a user reads off a
-  memory gauge. (Pressure-band coloring was tried first and dropped as unintuitive;
-  see Alternatives.)
+  independent `memoryColorMode` setting: a fixed accent, or a used-ratio gradient.
+  Default is `gradient`, so out of the box the color reinforces "how full" — the
+  one thing a user reads off a memory gauge. (Pressure-band coloring was tried
+  first and dropped as unintuitive; see Alternatives.)
+- **Memory has its own gradient stops (blue → green → orange → red).** CPU/GPU
+  load reads "less is calmer," so its gradient starts cool-teal and only warms.
+  Memory has a *sweet spot*: barely-used RAM is underutilized ("cold" blue),
+  healthy mid-range usage is green (0.5), and only the high range warms (orange at
+  0.75, red at 1.0). Reusing the load gradient here put amber at 50% — alarming for
+  a perfectly healthy reading — so memory maps through `memoryGradientStops`
+  instead.
 - **Static, not animated.** The gauge does not participate in the animation timer.
   Its stillness is itself the message ("this is a water level, not a speed"). Fill
   changes ease smoothly over ~0.3s; there is no perpetual motion.
@@ -79,7 +85,9 @@ rates; the thing that fills is a level*.
 - Memory gets its own `memoryColorMode` (reusing the `ColorMode { fixed, gradient }`
   enum, default `gradient`) plus a `memoryColorHex` accent, rather than sharing the
   spinners' global `colorMode` — so its color can be set independently. The gradient
-  is driven by the used ratio (the spinners' by load), reusing `loadGradientColorHex`.
+  is driven by the used ratio through `memoryGradientStops` (blue → green → orange →
+  red), distinct from the spinners' load gradient; both share the generic
+  `gradientColorHex(at:stops:)` interpolator.
 - Memory **is plotted on the 3-minute history line chart** as a third line (used
   ratio %, sharing the 0...100 axis), in a fixed color distinct from CPU-green and
   GPU-blue. `AppModel` gains a `memoryHistory` buffer alongside `cpuHistory` /

@@ -71,7 +71,10 @@ final class MemoryTests: XCTestCase {
 
     func testGaugeColorGradientModeTracksUsedRatio() {
         let hex = memoryGaugeColorHex(mode: .gradient, fixedHex: "#123456", usedRatio: 0.5)
-        XCTAssertEqual(hex, loadGradientColorHex(forLoad: 0.5))
+        // The gradient branch uses memory's own stops (sweet spot green at 0.5),
+        // not the CPU/GPU load gradient (amber at 0.5).
+        XCTAssertEqual(hex, memoryGradientColorHex(forUsedRatio: 0.5))
+        XCTAssertNotEqual(hex, loadGradientColorHex(forLoad: 0.5))
         // Gradient ignores the fixed color and follows the used ratio.
         XCTAssertNotEqual(hex, "#123456")
     }

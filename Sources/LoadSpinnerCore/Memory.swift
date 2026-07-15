@@ -79,12 +79,14 @@ public func memoryReading(from snapshot: MemorySnapshot) -> MemoryReading {
 
 /// Resolve the memory gauge color for the current color mode.
 ///
-/// Mirrors the CPU/GPU color axis: a fixed accent, or a used-ratio-linked gradient
-/// (cool when empty, warm when full). Pure, so both branches are testable.
+/// Mirrors the CPU/GPU color axis (fixed accent or gradient), but the gradient is
+/// memory's own blue → green → orange → red mapping: barely-used RAM reads "cold,"
+/// the healthy mid-range sweet spot is green, and only the high range warms.
+/// Pure, so both branches are testable.
 public func memoryGaugeColorHex(mode: ColorMode, fixedHex: String, usedRatio: Double) -> String {
     switch mode {
     case .fixed: return fixedHex
-    case .gradient: return loadGradientColorHex(forLoad: usedRatio)
+    case .gradient: return memoryGradientColorHex(forUsedRatio: usedRatio)
     }
 }
 
