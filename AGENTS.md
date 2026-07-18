@@ -39,10 +39,12 @@ Sources/
     Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
-    AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, popover
+    AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, status popover
     SpinnerView.swift    Layer-backed indicators: spinner cells (lineDashPhase) + gauge cells (strokeEnd fill)
     AppModel.swift       ObservableObject: live loads, history, settings
-    PanelView.swift      SwiftUI panel: live gauges, Swift Charts history, settings
+    PanelContainer.swift Two-faced flip: PanelView (front) ⇄ SettingsView (back); Y-axis rotation + per-face height fit
+    PanelView.swift      SwiftUI popover front face (status): live gauges, Swift Charts history, top-right gear + quit
+    SettingsView.swift   SwiftUI popover back face (settings): mode/color/shape/memory/login, top-right chevron back
     SettingsStore.swift  UserDefaults-backed AppSettings persistence
     LoginItem.swift      SMAppService launch-at-login wrapper
     Doctor.swift         `doctor` subcommand
@@ -71,6 +73,26 @@ Resources/Info.plist.in  Bundle template (@VERSION@, @BUNDLE_ID@)
   it eagerly and a `TimelineView(.animation)` drove continuous full-panel layout
   even while closed (~12% CPU). The panel now uses a static load gauge (the menu
   bar carries the animation), and idle CPU is ~1%.
+- **Status and settings are two faces of one flipping popover.** The click-to-open
+  popover is a card: `PanelView` (status) on the front, `SettingsView` on the back,
+  hosted by `PanelContainer`, which flips between them with a Y-axis
+  `rotation3DEffect`. Splitting them kept the popover uncluttered after the memory
+  settings block grew (see `docs/adr/0003-settings-on-popover-back.md`). Gotchas
+  worth knowing:
+  - **Both flip toggles are top-right and `.focusable(false)`.** The front's gear
+    and the back's chevron share the corner so the control never moves; without
+    `focusable(false)` the chevron grabs keyboard focus and draws a focus ring the
+    instant the settings face appears.
+  - **The back face is pre-rotated 180°** so it reads correctly at the end of the
+    turn, and the two faces' opacity crossfades on a half-duration schedule (front
+    out first half, back in after the midpoint) so neither is ever seen mirrored.
+  - **Per-face height fit.** The popover height follows the visible face rather than
+    padding the shorter status face to the settings height. Each face is measured at
+    its natural size with `.fixedSize(vertical:)` + a `GeometryReader`/
+    `PreferenceKey` (so the measurement is independent of the height the container is
+    currently constrained to), and `.frame(height:)` animates between them with the
+    flip. A tried-first *separate `NSWindow`* was dropped as disjoint — it appeared
+    away from the menu bar and had to `NSApp.activate`; see the ADR's alternatives.
 - **GPU degrade.** GPU availability is probed once at launch (`IOKitGPUSampler`).
   When unavailable, `indicatorPlans` drops GPU and the panel hides GPU modes.
 - **Memory is a gauge, not a spinner.** Memory is a *level* (how full), so it

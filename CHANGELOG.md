@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [Unreleased]
+
+### Changed
+
+- Settings moved off the click-to-open popover's front and onto its **back face**:
+  the panel now flips over — status readout (live rings, memory donut, history
+  chart) on the front, settings on the back. A gear in the top-right corner flips
+  to settings; a chevron in the same corner flips back, so the toggle never moves.
+  The popover's height fits whichever face is showing (the status face is no longer
+  padded out to the taller settings height), animating between the two in step with
+  the flip. Settings are grouped into インジケーター / メモリ / 全般 sections. No
+  settings behavior changed — only their location. See
+  [docs/adr/0003-settings-on-popover-back.md](docs/adr/0003-settings-on-popover-back.md).
+
 ## [0.3.1] - 2026-07-16
 
 ### Changed

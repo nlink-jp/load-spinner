@@ -77,6 +77,7 @@ private struct MemoryDonut: View {
 
 struct PanelView: View {
     @ObservedObject var model: AppModel
+    var onOpenSettings: () -> Void
     var onQuit: () -> Void
 
     var body: some View {
@@ -86,8 +87,6 @@ struct PanelView: View {
             memoryCard
             historyChart
             Divider()
-            settingsSection
-            Divider()
             footer
         }
         .padding(16)
@@ -95,11 +94,20 @@ struct PanelView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 6) {
             Text("負荷モニター").font(.headline)
-            Spacer()
             Circle().fill(.green).frame(width: 7, height: 7)
             Text("ライブ").font(.caption).foregroundStyle(.secondary)
+            Spacer()
+            // Flip-to-settings control, pinned top-right; the settings face puts its
+            // flip-back control in the same corner so the toggle never moves.
+            Button(action: onOpenSettings) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            // Keep the flip toggle out of the key-view loop (no auto focus ring).
+            .focusable(false)
+            .help("設定")
         }
     }
 
@@ -223,150 +231,6 @@ struct PanelView: View {
         }
     }
 
-    // MARK: - Settings
-
-    private var settingsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("表示モード", selection: modeBinding) {
-                ForEach(availableModes, id: \.self) { mode in
-                    Text(modeLabel(mode)).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            Picker("色", selection: colorModeBinding) {
-                Text("単色").tag(ColorMode.fixed)
-                Text("負荷連動").tag(ColorMode.gradient)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            configRows
-
-            Toggle("アイコンにラベルを表示", isOn: boolBinding(\.showLabels))
-                .toggleStyle(.switch)
-                .font(.subheadline)
-
-            Divider()
-            memorySettings
-
-            Toggle("ログイン時に起動", isOn: loginBinding)
-                .toggleStyle(.switch)
-                .font(.subheadline)
-        }
-    }
-
-    /// Memory-specific controls: menu-bar visibility, frame shape, and color mode
-    /// (all also restyle the panel donut above). The gauge fills with the used
-    /// ratio; its color is a fixed accent or a used-ratio gradient.
-    private var memorySettings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Toggle("メモリをメニューバーに表示", isOn: boolBinding(\.showMemory))
-                .toggleStyle(.switch)
-                .font(.subheadline)
-
-            HStack(spacing: 8) {
-                Text("メモリ").font(.subheadline).frame(width: 34, alignment: .leading)
-                Picker("", selection: shapeBinding(\.memoryShape)) {
-                    Text("● 丸").tag(IndicatorShape.circle)
-                    Text("■ 四角").tag(IndicatorShape.square)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 104)
-                Spacer(minLength: 8)
-                if model.settings.memoryColorMode == .fixed {
-                    colorSwatches(\.memoryColorHex)
-                } else {
-                    memoryGradientPreview
-                }
-            }
-
-            Picker("メモリ色", selection: memoryColorModeBinding) {
-                Text("単色").tag(ColorMode.fixed)
-                Text("使用率連動").tag(ColorMode.gradient)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-        }
-    }
-
-    @ViewBuilder
-    private var configRows: some View {
-        switch model.settings.mode {
-        case .both:
-            configRow("CPU", shape: \.cpuShape, color: \.cpuColorHex)
-            if model.gpuAvailable {
-                configRow("GPU", shape: \.gpuShape, color: \.gpuColorHex)
-            }
-        case .cpu:
-            configRow("CPU", shape: \.cpuShape, color: \.cpuColorHex)
-        case .gpu:
-            configRow("GPU", shape: \.gpuShape, color: \.gpuColorHex)
-        case .max:
-            configRow("合成", shape: \.combinedShape, color: \.combinedColorHex)
-        }
-    }
-
-    private func configRow(
-        _ title: String,
-        shape: WritableKeyPath<AppSettings, IndicatorShape>,
-        color: WritableKeyPath<AppSettings, String>
-    ) -> some View {
-        HStack(spacing: 8) {
-            Text(title).font(.subheadline).frame(width: 34, alignment: .leading)
-            Picker("", selection: shapeBinding(shape)) {
-                Text("● 丸").tag(IndicatorShape.circle)
-                Text("■ 四角").tag(IndicatorShape.square)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 104)
-            Spacer(minLength: 8)
-            if model.settings.colorMode == .fixed {
-                colorSwatches(color)
-            } else {
-                gradientPreview
-            }
-        }
-    }
-
-    private func colorSwatches(_ keyPath: WritableKeyPath<AppSettings, String>) -> some View {
-        HStack(spacing: 6) {
-            ForEach(indicatorPalette, id: \.self) { hex in
-                let selected = model.settings[keyPath: keyPath].caseInsensitiveCompare(hex) == .orderedSame
-                Circle()
-                    .fill(Color(hex: hex) ?? .gray)
-                    .frame(width: 16, height: 16)
-                    .overlay(Circle().stroke(Color.primary, lineWidth: selected ? 2 : 0))
-                    .onTapGesture { model.updateSettings { $0[keyPath: keyPath] = hex } }
-            }
-        }
-    }
-
-    /// The CPU/GPU load gradient preview (teal → amber → coral).
-    private var gradientPreview: some View {
-        gradientPreview(stops: loadGradientStops)
-    }
-
-    /// The memory used-ratio gradient preview (blue → green → orange → red).
-    private var memoryGradientPreview: some View {
-        gradientPreview(stops: memoryGradientStops)
-    }
-
-    private func gradientPreview(stops: [(location: Double, hex: String)]) -> some View {
-        RoundedRectangle(cornerRadius: 4)
-            .fill(LinearGradient(
-                gradient: Gradient(stops: stops.map {
-                    .init(color: Color(hex: $0.hex) ?? .gray, location: $0.location)
-                }),
-                startPoint: .leading,
-                endPoint: .trailing
-            ))
-            .frame(width: 104, height: 14)
-    }
-
     private var footer: some View {
         HStack {
             Text("load-spinner \(appVersion)").font(.caption2).foregroundStyle(.secondary)
@@ -375,42 +239,7 @@ struct PanelView: View {
         }
     }
 
-    // MARK: - Bindings & helpers
-
-    private var availableModes: [DisplayMode] {
-        model.gpuAvailable ? [.max, .cpu, .gpu, .both] : [.max, .cpu]
-    }
-
-    private func modeLabel(_ mode: DisplayMode) -> String {
-        switch mode {
-        case .max: return "高い方"
-        case .cpu: return "CPU"
-        case .gpu: return "GPU"
-        case .both: return "2つ"
-        }
-    }
-
-    private var modeBinding: Binding<DisplayMode> {
-        Binding(
-            get: { model.settings.mode },
-            set: { newValue in model.updateSettings { $0.mode = newValue } }
-        )
-    }
-
-    private var colorModeBinding: Binding<ColorMode> {
-        Binding(
-            get: { model.settings.colorMode },
-            set: { newValue in model.updateSettings { $0.colorMode = newValue } }
-        )
-    }
-
-    private var memoryColorModeBinding: Binding<ColorMode> {
-        Binding(
-            get: { model.settings.memoryColorMode },
-            set: { newValue in model.updateSettings { $0.memoryColorMode = newValue } }
-        )
-    }
-
+    // MARK: - Helpers
 
     /// The color to draw for a source: its fixed color, or the load-linked
     /// gradient color when the gradient color mode is active.
@@ -419,29 +248,5 @@ struct PanelView: View {
             return Color(hex: loadGradientColorHex(forLoad: load)) ?? .teal
         }
         return Color(hex: fixedHex) ?? .teal
-    }
-
-    private func shapeBinding(_ keyPath: WritableKeyPath<AppSettings, IndicatorShape>) -> Binding<IndicatorShape> {
-        Binding(
-            get: { model.settings[keyPath: keyPath] },
-            set: { newValue in model.updateSettings { $0[keyPath: keyPath] = newValue } }
-        )
-    }
-
-    private func boolBinding(_ keyPath: WritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
-        Binding(
-            get: { model.settings[keyPath: keyPath] },
-            set: { newValue in model.updateSettings { $0[keyPath: keyPath] = newValue } }
-        )
-    }
-
-    private var loginBinding: Binding<Bool> {
-        Binding(
-            get: { model.settings.launchAtLogin },
-            set: { isOn in
-                model.updateSettings { $0.launchAtLogin = isOn }
-                LoginItem.setEnabled(isOn)
-            }
-        )
     }
 }

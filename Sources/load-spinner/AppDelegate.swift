@@ -113,9 +113,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
         } else {
             // Build the SwiftUI panel only while it is on screen so it does no
-            // rendering work when closed.
+            // rendering work when closed. It resets to the status face on each open.
             let hosting = NSHostingController(
-                rootView: PanelView(model: model, onQuit: { NSApplication.shared.terminate(nil) })
+                rootView: PanelContainer(
+                    model: model,
+                    onQuit: { NSApplication.shared.terminate(nil) }
+                )
             )
             // Size the popover to the SwiftUI content's ideal size, otherwise the
             // top of the panel is clipped.

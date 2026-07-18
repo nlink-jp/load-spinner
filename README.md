@@ -14,10 +14,10 @@ spin are rates; the thing that fills is a level.
 
 ## Status
 
-In development. CPU, GPU, and memory monitoring, the menu bar indicators
-(spinners for CPU/GPU, a filling gauge for memory), and the click-to-open panel
-(live gauges, memory donut, history graph, settings) are implemented. Remaining:
-signing/notarization and release (Phase 3). See
+CPU, GPU, and memory monitoring, the menu bar indicators (spinners for CPU/GPU, a
+filling gauge for memory), and the click-to-open panel — a status face (live
+gauges, memory donut, history graph) that flips over to a settings face — are
+implemented, signed, and notarized. See
 [docs/en/load-spinner-rfp.md](docs/en/load-spinner-rfp.md).
 
 ## Requirements
@@ -46,8 +46,11 @@ make clean
 ## Usage
 
 Launch `dist/load-spinner.app`. A spinning indicator appears in the menu bar.
-Click it to open a panel showing live CPU/GPU load, a memory donut, a recent
-history graph, and settings:
+Click it to open a status panel showing live CPU/GPU load, a memory donut, and a
+recent history graph. The panel stays a glanceable readout; the gear button in its
+top-right corner **flips the panel over** to reveal settings, and a chevron in the
+same corner flips it back
+(see [docs/adr/0003-settings-on-popover-back.md](docs/adr/0003-settings-on-popover-back.md)):
 
 - Display mode: max (higher of CPU/GPU), CPU only, GPU only, or both (two indicators)
 - Symbol: circle or square — set per source (CPU and GPU independently in both mode)
@@ -58,9 +61,9 @@ history graph, and settings:
   mid-range sweet spot is green, and only the high range warms
 - Launch at login
 
-The panel always shows the memory donut — used percentage in the hole and used /
-total GB — regardless of the menu bar toggle. When GPU utilization cannot be read
-on the system, GPU-related options are disabled automatically and the app runs
+The status panel always shows the memory donut — used percentage in the hole and
+used / total GB — regardless of the menu bar toggle. When GPU utilization cannot be
+read on the system, GPU-related options are disabled automatically and the app runs
 CPU-only; memory is always available.
 Settings persist across launches.
 
