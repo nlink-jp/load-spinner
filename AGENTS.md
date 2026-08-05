@@ -93,6 +93,16 @@ Resources/Info.plist.in  Bundle template (@VERSION@, @BUNDLE_ID@)
     currently constrained to), and `.frame(height:)` animates between them with the
     flip. A tried-first *separate `NSWindow`* was dropped as disjoint — it appeared
     away from the menu bar and had to `NSApp.activate`; see the ADR's alternatives.
+- **Transient dismissal relies on the app never being activated.** `NSPopover`'s
+  `.transient` outside-click close silently breaks in an accessory (LSUIElement)
+  app once the process has been activated — status-lens hit this after adding a
+  settings window + `NSApp.activate`. load-spinner is unaffected *only because*
+  nothing here activates the app: settings live on the popover's back face and
+  there is no other window (audited 2026-08-06). If a separate window or any
+  `NSApp.activate` call is ever introduced, port status-lens's
+  `installPopoverClickMonitors` (global + local mouse-down monitors closing the
+  popover; the local monitor must ignore the status item button's window) in the
+  same change.
 - **GPU degrade.** GPU availability is probed once at launch (`IOKitGPUSampler`).
   When unavailable, `indicatorPlans` drops GPU and the panel hides GPU modes.
 - **Memory is a gauge, not a spinner.** Memory is a *level* (how full), so it
