@@ -14,11 +14,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let gpuSampler = IOKitGPUSampler()
     private let memorySampler = MachMemorySampler()
     private var gpuAvailable = false
+    /// Resolved once at launch: re-probing on every popover open would cost a
+    /// Launch Services round trip for a location that does not move.
+    private var activityMonitorURL: URL?
     private var sampleTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         gpuAvailable = gpuSampler.sample() != nil
+        activityMonitorURL = ActivityMonitor.locate()
         model = AppModel(store: SettingsStore(), gpuAvailable: gpuAvailable)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -117,6 +121,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let hosting = NSHostingController(
                 rootView: PanelContainer(
                     model: model,
+                    onOpenActivityMonitor: activityMonitorURL.map { url in
+                        { [weak self] in
+                            self?.popover.performClose(nil)
+                            ActivityMonitor.open(at: url)
+                        }
+                    },
                     onQuit: { NSApplication.shared.terminate(nil) }
                 )
             )

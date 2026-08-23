@@ -13,6 +13,7 @@ import SwiftUI
 /// docs/adr/0003-settings-on-popover-back.md.
 struct PanelContainer: View {
     @ObservedObject var model: AppModel
+    var onOpenActivityMonitor: (() -> Void)?
     var onQuit: () -> Void
 
     @State private var showingSettings = false
@@ -29,6 +30,7 @@ struct PanelContainer: View {
             PanelView(
                 model: model,
                 onOpenSettings: { showingSettings = true },
+                onOpenActivityMonitor: onOpenActivityMonitor,
                 onQuit: onQuit
             )
             .fixedSize(horizontal: false, vertical: true)

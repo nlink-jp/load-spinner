@@ -37,13 +37,15 @@ Sources/
     Indicator.swift      indicatorPlans(...) — mode+loads -> IndicatorPlan[], GPU degrade
     Gradient.swift       gradientColorHex(at:stops:) + load stops (teal->amber->coral) and memory stops (blue->green->orange->red)
     Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
+    SystemApps.swift     resolveActivityMonitorURL(lookupBundleID:fileExists:) — pure, injected probes
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
     AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, status popover
     SpinnerView.swift    Layer-backed indicators: spinner cells (lineDashPhase) + gauge cells (strokeEnd fill)
     AppModel.swift       ObservableObject: live loads, history, settings
     PanelContainer.swift Two-faced flip: PanelView (front) ⇄ SettingsView (back); Y-axis rotation + per-face height fit
-    PanelView.swift      SwiftUI popover front face (status): live gauges, Swift Charts history, top-right gear + quit
+    PanelView.swift      SwiftUI popover front face (status): live gauges, Swift Charts history, top-right gear + footer (Activity Monitor, quit)
+    ActivityMonitor.swift NSWorkspace wrapper: locate() + open(at:) for com.apple.ActivityMonitor
     SettingsView.swift   SwiftUI popover back face (settings): mode/color/shape/memory/login, top-right chevron back
     SettingsStore.swift  UserDefaults-backed AppSettings persistence
     LoginItem.swift      SMAppService launch-at-login wrapper
@@ -103,6 +105,19 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
   `installPopoverClickMonitors` (global + local mouse-down monitors closing the
   popover; the local monitor must ignore the status item button's window) in the
   same change.
+- **Activity Monitor hand-off.** The panel footer's button launches
+  `com.apple.ActivityMonitor` (see `docs/adr/0004-activity-monitor-handoff.md`).
+  The location is resolved **once at launch** by `resolveActivityMonitorURL`
+  (Launch Services first, then the `/System/Applications/Utilities` path), and
+  `AppDelegate` hands `PanelContainer`/`PanelView` a closure — or `nil`, which
+  disables the button and switches its tooltip to say why. Same degrade discipline
+  as GPU: never show a control that silently does nothing. The launch activates
+  *Activity Monitor*, not load-spinner — there is no `NSApp.activate` here, so the
+  transient-dismissal invariant above is untouched. The button is icon-only
+  because a text label truncates in the 340-pt footer next to the version and 終了
+  (checked by rendering the panel offscreen in a throwaway `NSHostingView` test —
+  the useful way to settle a layout question here, and deleted afterwards rather
+  than kept as a snapshot).
 - **GPU degrade.** GPU availability is probed once at launch (`IOKitGPUSampler`).
   When unavailable, `indicatorPlans` drops GPU and the panel hides GPU modes.
 - **Memory is a gauge, not a spinner.** Memory is a *level* (how full), so it

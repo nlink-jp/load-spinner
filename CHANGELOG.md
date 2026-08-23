@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [Unreleased]
+
+### Added
+
+- A button in the status panel's footer that opens macOS's **Activity Monitor** —
+  the hand-off from "how busy is it?" (what this app shows) to "busy with what?"
+  (what it deliberately does not). Icon only, with a tooltip: the spelled-out
+  label does not fit next to the version and 終了 at the panel's width. If
+  Activity Monitor cannot be located, the button is disabled and says so rather
+  than doing nothing. See
+  [docs/adr/0004-activity-monitor-handoff.md](docs/adr/0004-activity-monitor-handoff.md).
+
 ## [0.4.0] - 2026-07-18
 
 ### Changed

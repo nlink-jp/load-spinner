@@ -61,6 +61,11 @@ same corner flips it back
   mid-range sweet spot is green, and only the high range warms
 - Launch at login
 
+The panel's footer carries a button that opens macOS's **Activity Monitor** —
+once the panel has told you *how* busy the machine is, that is where you find out
+*what* is keeping it busy. It is disabled if Activity Monitor cannot be located
+(see [docs/adr/0004-activity-monitor-handoff.md](docs/adr/0004-activity-monitor-handoff.md)).
+
 The status panel always shows the memory donut — used percentage in the hole and
 used / total GB — regardless of the menu bar toggle. When GPU utilization cannot be
 read on the system, GPU-related options are disabled automatically and the app runs

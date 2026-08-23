@@ -78,6 +78,9 @@ private struct MemoryDonut: View {
 struct PanelView: View {
     @ObservedObject var model: AppModel
     var onOpenSettings: () -> Void
+    /// Opens macOS's Activity Monitor. `nil` when it could not be located, which
+    /// disables the control rather than offering a button that does nothing.
+    var onOpenActivityMonitor: (() -> Void)?
     var onQuit: () -> Void
 
     var body: some View {
@@ -232,9 +235,21 @@ struct PanelView: View {
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 8) {
             Text("load-spinner \(appVersion)").font(.caption2).foregroundStyle(.secondary)
             Spacer()
+            // The readouts above answer "how busy?"; Activity Monitor answers
+            // "busy with what?" — so the hand-off sits next to them. Icon only:
+            // the footer has no room for the spelled-out label next to the version
+            // and 終了 (a text label truncates at the 340pt panel width).
+            Button(action: { onOpenActivityMonitor?() }) {
+                Image(systemName: "chart.bar.xaxis")
+            }
+            .disabled(onOpenActivityMonitor == nil)
+            .help(onOpenActivityMonitor == nil
+                  ? "アクティビティモニタが見つかりません"
+                  : "アクティビティモニタを開く")
+            .accessibilityLabel("アクティビティモニタを開く")
             Button("終了") { onQuit() }
         }
     }
