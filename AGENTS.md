@@ -52,7 +52,7 @@ Sources/
     Color+Hex.swift      #RRGGBB -> SwiftUI Color
     Version.swift        appVersion from bundle Info.plist
 Tests/LoadSpinnerCoreTests/
-Resources/Info.plist.in  Bundle template (@VERSION@, @BUNDLE_ID@)
+Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_ID}, ${APP_NAME} substituted by `make build-app`)
 ```
 
 ## Design notes / gotchas
