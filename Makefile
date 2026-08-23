@@ -25,7 +25,7 @@ ICON_SRC := assets/AppIcon-1024.png
 # nlink-jp/homebrew-tap checkout. The zip is named after $(NAME); the .app inside
 # is $(APP_NAME).app.
 BREW_KIND      := cask
-BREW_DESC      := Menu-bar CPU/GPU load indicator that spins with system load
+BREW_DESC      := Menu-bar indicator that spins with CPU/GPU load, plus a memory gauge
 BREW_NAME      := $(NAME)
 BREW_APP       := $(APP_NAME).app
 BREW_BUNDLE_ID := $(BUNDLE_ID)
