@@ -38,6 +38,7 @@ Sources/
     Gradient.swift       gradientColorHex(at:stops:) + load stops (teal->amber->coral) and memory stops (blue->green->orange->red)
     Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
     SystemApps.swift     resolveActivityMonitorURL(lookupBundleID:fileExists:) — pure, injected probes
+    SingleInstance.swift singleInstanceDecision() — startup duplicate-instance guard (pure; pids in, decision out)
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
     AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, status popover
@@ -135,6 +136,17 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
   GPU-blue lines so the two series stay distinguishable. The native SwiftUI
   `ColorPicker` was tried and dropped — it doesn't present from a menu bar
   accessory app; fixed mode uses an inline swatch row instead.
+- **Notification clicks launch by bundle ID — enforce a single instance.**
+  Clicking a banner makes notificationd open the app via LaunchServices,
+  which resolves `jp.nlink.load-spinner` among *all* registered copies
+  (`dist/` dev builds, release-verification extractions, `/Applications`)
+  and may start a different copy than the running one → two menu bar
+  items, double polling. Guarded at two layers:
+  `LSMultipleInstancesProhibited` (Info.plist, stops LaunchServices
+  launches) and a startup check in `Entry.main`
+  (`singleInstanceDecision`, core-tested) that exits with a stderr note
+  (covers direct exec / `open -n`). Side effect: to run a `dist/` build,
+  quit the installed instance first — a second copy now refuses to start.
 - **Version.** Injected into Info.plist by `make build`; read at runtime via
   `CFBundleShortVersionString`, falling back to `dev` outside a bundle.
 

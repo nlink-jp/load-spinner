@@ -72,6 +72,10 @@ read on the system, GPU-related options are disabled automatically and the app r
 CPU-only; memory is always available.
 Settings persist across launches.
 
+The app is single-instance: starting a second copy (for example, a
+notification click resolving to a different copy of the .app) logs to
+stderr and exits, leaving the running instance alone.
+
 ### CLI
 
 The same binary exposes a diagnostic subcommand:
