@@ -29,6 +29,9 @@ BREW_DESC      := Menu-bar indicator that spins with CPU/GPU load, plus a memory
 BREW_NAME      := $(NAME)
 BREW_APP       := $(APP_NAME).app
 BREW_BUNDLE_ID := $(BUNDLE_ID)
+# The cask must not advertise an OS the app cannot launch on: the shared template
+# defaults to :big_sur, and Package.swift here says macOS 13.
+BREW_MACOS_FLOOR := :ventura
 include scripts/release-brew.mk
 
 # macOS records the SDK an app was linked against in LC_BUILD_VERSION, and the
