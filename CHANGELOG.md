@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [0.5.2] - 2026-09-20
+
+### Fixed
+
+- The panel stayed open after some outside clicks: clicking an empty stretch of
+  the menu bar, or another app's non-activating panel, did not close it.
+  `NSPopover`'s transient dismissal only reacted to clicks in windows that take
+  activation (measured on macOS 27.0). Outside clicks are now watched with
+  explicit global/local mouse-down monitors while the panel is shown. Clicking
+  the menu bar icon still toggles the panel, and clicks inside it keep it open
+
 ## [0.5.1] - 2026-08-25
 
 ### Fixed

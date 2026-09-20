@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Launch Services round trip for a location that does not move.
     private var activityMonitorURL: URL?
     private var sampleTimer: Timer?
+    private var popoverClickMonitors: [Any] = []
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -136,12 +137,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.contentViewController = hosting
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+            installPopoverClickMonitors()
         }
+    }
+
+    /// `.transient` only closes the popover when the outside click lands in a
+    /// window that takes activation. A click on a surface that does not — an
+    /// empty stretch of the menu bar, another process's non-activating panel —
+    /// leaves it open (measured on macOS 27.0, with and without the `makeKey()`
+    /// above), so outside clicks are watched explicitly while it is shown.
+    private func installPopoverClickMonitors() {
+        removePopoverClickMonitors()
+        let events: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
+        let global = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.popover.performClose(nil)
+            }
+        }
+        let local = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
+            let window = event.window
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let site: PopoverClickSite
+                if window === self.statusItem.button?.window {
+                    site = .statusItemButton
+                } else if window === self.popover.contentViewController?.view.window {
+                    site = .popover
+                } else {
+                    site = .elsewhere
+                }
+                if shouldClosePopover(isShown: self.popover.isShown, clickSite: site) {
+                    self.popover.performClose(nil)
+                }
+            }
+            return event
+        }
+        popoverClickMonitors = [global, local].compactMap { $0 }
+    }
+
+    private func removePopoverClickMonitors() {
+        for monitor in popoverClickMonitors {
+            NSEvent.removeMonitor(monitor)
+        }
+        popoverClickMonitors = []
     }
 }
 
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
+        removePopoverClickMonitors()
         // Release the SwiftUI panel so it stops consuming resources when hidden.
         popover.contentViewController = nil
     }

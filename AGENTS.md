@@ -40,9 +40,10 @@ Sources/
     Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
     SystemApps.swift     resolveActivityMonitorURL(lookupBundleID:fileExists:) — pure, injected probes
     SingleInstance.swift singleInstanceDecision() — startup duplicate-instance guard (pure; pids in, decision out)
+    PopoverDismissal.swift shouldClosePopover(isShown:clickSite:) — which local mouse-downs close the popover (pure)
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
-    AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, status popover
+    AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, status popover + outside-click monitors
     SpinnerView.swift    Layer-backed indicators: spinner cells (lineDashPhase) + gauge cells (strokeEnd fill)
     AppModel.swift       ObservableObject: live loads, history, settings
     PanelContainer.swift Two-faced flip: PanelView (front) ⇄ SettingsView (back); Y-axis rotation + per-face height fit
@@ -106,25 +107,50 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
     currently constrained to), and `.frame(height:)` animates between them with the
     flip. A tried-first *separate `NSWindow`* was dropped as disjoint — it appeared
     away from the menu bar and had to `NSApp.activate`; see the ADR's alternatives.
-- **Transient dismissal relies on the app never being activated.** `NSPopover`'s
-  `.transient` outside-click close silently breaks in an accessory (LSUIElement)
-  app once the process has been activated — status-lens hit this after adding a
-  settings window + `NSApp.activate`. load-spinner is unaffected *only because*
-  nothing here activates the app: settings live on the popover's back face and
-  there is no other window (audited 2026-08-06). If a separate window or any
-  `NSApp.activate` call is ever introduced, port status-lens's
-  `installPopoverClickMonitors` (global + local mouse-down monitors closing the
-  popover; the local monitor must ignore the status item button's window) in the
-  same change.
+- **Outside-click dismissal never relies on `.transient` alone.** Measured on the
+  real app (macOS 27.0, 2026-09-20): `.transient` closed the popover only when
+  the outside click landed in a window that takes activation — another app's
+  normal window, whether or not that app was already frontmost. A click on a
+  surface that takes none — an empty stretch of the menu bar, another process's
+  non-activating panel — left it open every time. `togglePopover` therefore
+  installs global + local mouse-down monitors while the popover is shown
+  (`installPopoverClickMonitors`, ported from status-lens) and removes them in
+  `popoverDidClose`. Rules that come with them:
+  - **The local monitor must ignore the status item button's window**, or one
+    button click becomes close-then-reopen. That decision is the pure
+    `shouldClosePopover(isShown:clickSite:)` in `LoadSpinnerCore` (tested); the
+    AppKit side only classifies `event.window`.
+  - **The local monitor closes on a mouse-down in any other window of this app.**
+    Today there is none (every control, on both faces, lives in the popover's
+    window). A separate window, or a control that opens its own window, has to
+    be reconciled with that rule in the same change.
+  - **Swift 6:** monitor handlers are nonisolated — wrap the body in
+    `MainActor.assumeIsolated` and keep the non-Sendable `NSEvent` out of its
+    return value (read `event.window` outside, `return event` outside).
+  - **`makeKey()` is not the cause, and is not an activation.** It stays because
+    the popover otherwise draws in the inactive state (see status-lens's
+    AGENTS.md), but a control build without it failed identically, and with it
+    load-spinner never became the frontmost app (`NSWorkspace` and `lsappinfo`
+    agreed, sampled from 0.15 s after opening). The note that used to stand here
+    — "unaffected because nothing activates the app" (2026-08-06) — was wrong
+    twice: `makeKey()` had been there since the first release, and the failure
+    needs no activation.
+  - **Only a real machine can judge this.** Re-verify with synthetic HID clicks
+    (`CGEvent`), the status item's frame from the AX `AXExtrasMenuBar`, and
+    popover visibility from `CGWindowList`; click only targets you own or have
+    just re-read (a probe-owned window/panel, a point whose AX role is
+    `AXMenuBar`). Cover: normal window, already-frontmost app, non-activating
+    panel, empty menu bar, inside click stays open, button click closes without
+    reopening.
 - **Activity Monitor hand-off.** The panel footer's button launches
   `com.apple.ActivityMonitor` (see `docs/adr/0004-activity-monitor-handoff.md`).
   The location is resolved **once at launch** by `resolveActivityMonitorURL`
   (Launch Services first, then the `/System/Applications/Utilities` path), and
   `AppDelegate` hands `PanelContainer`/`PanelView` a closure — or `nil`, which
   disables the button and switches its tooltip to say why. Same degrade discipline
-  as GPU: never show a control that silently does nothing. The launch activates
-  *Activity Monitor*, not load-spinner — there is no `NSApp.activate` here, so the
-  transient-dismissal invariant above is untouched. The button is icon-only
+  as GPU: never show a control that silently does nothing. The closure closes the
+  popover first (which also removes the click monitors, via `popoverDidClose`),
+  and the launch activates *Activity Monitor*, not load-spinner. The button is icon-only
   because a text label truncates in the 340-pt footer next to the version and 終了
   (checked by rendering the panel offscreen in a throwaway `NSHostingView` test —
   the useful way to settle a layout question here, and deleted afterwards rather
