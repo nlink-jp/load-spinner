@@ -51,7 +51,7 @@ follows semantic versioning once released.
   label does not fit next to the version and 終了 at the panel's width. If
   Activity Monitor cannot be located, the button is disabled and says so rather
   than doing nothing. See
-  [docs/adr/0004-activity-monitor-handoff.md](docs/adr/0004-activity-monitor-handoff.md).
+  [docs/en/adr/0004-activity-monitor-handoff.md](docs/en/adr/0004-activity-monitor-handoff.md).
 
 ## [0.4.0] - 2026-07-18
 
@@ -65,7 +65,7 @@ follows semantic versioning once released.
   padded out to the taller settings height), animating between the two in step with
   the flip. Settings are grouped into インジケーター / メモリ / 全般 sections. No
   settings behavior changed — only their location. See
-  [docs/adr/0003-settings-on-popover-back.md](docs/adr/0003-settings-on-popover-back.md).
+  [docs/en/adr/0003-settings-on-popover-back.md](docs/en/adr/0003-settings-on-popover-back.md).
 
 ## [0.3.1] - 2026-07-16
 
@@ -82,7 +82,7 @@ follows semantic versioning once released.
 
 - Memory monitoring, rendered as a filling **gauge** (a *level*) rather than a
   spinner (a *rate*): a ring that fills with the used ratio and does not move. See
-  [docs/adr/0002-memory-as-filling-gauge.md](docs/adr/0002-memory-as-filling-gauge.md).
+  [docs/en/adr/0002-memory-as-filling-gauge.md](docs/en/adr/0002-memory-as-filling-gauge.md).
   - Menu bar: an optional memory gauge (toggle in the panel), reusing the circle /
     rounded-square frame but filling `strokeEnd` to the used ratio (static — it
     does not spin). Shape-only, like the CPU/GPU spinners.
