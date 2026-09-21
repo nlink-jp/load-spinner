@@ -50,7 +50,7 @@ Click it to open a status panel showing live CPU/GPU load, a memory donut, and a
 recent history graph. The panel stays a glanceable readout; the gear button in its
 top-right corner **flips the panel over** to reveal settings, and a chevron in the
 same corner flips it back
-(see [docs/adr/0003-settings-on-popover-back.md](docs/adr/0003-settings-on-popover-back.md)):
+(see [docs/en/adr/0003-settings-on-popover-back.md](docs/en/adr/0003-settings-on-popover-back.md)):
 
 - Display mode: max (higher of CPU/GPU), CPU only, GPU only, or both (two indicators)
 - Symbol: circle or square — set per source (CPU and GPU independently in both mode)
@@ -64,7 +64,7 @@ same corner flips it back
 The panel's footer carries a button that opens macOS's **Activity Monitor** —
 once the panel has told you *how* busy the machine is, that is where you find out
 *what* is keeping it busy. It is disabled if Activity Monitor cannot be located
-(see [docs/adr/0004-activity-monitor-handoff.md](docs/adr/0004-activity-monitor-handoff.md)).
+(see [docs/en/adr/0004-activity-monitor-handoff.md](docs/en/adr/0004-activity-monitor-handoff.md)).
 
 The status panel always shows the memory donut — used percentage in the hole and
 used / total GB — regardless of the menu bar toggle. When GPU utilization cannot be
@@ -94,11 +94,11 @@ load-spinner --help      # usage
   follows Activity Monitor's *Memory Used* (App + Wired + Compressed), **not**
   `free` — on macOS free memory is misleadingly near-zero because the OS fills
   idle RAM with file cache (see
-  [docs/adr/0002-memory-as-filling-gauge.md](docs/adr/0002-memory-as-filling-gauge.md)).
+  [docs/en/adr/0002-memory-as-filling-gauge.md](docs/en/adr/0002-memory-as-filling-gauge.md)).
 - The menu bar icon is an AppKit `NSStatusItem` hosting a layer-backed view. For
   spinners the frame is fixed while a `CAShapeLayer`'s `lineDashPhase` is animated
   so a single lit segment travels around the perimeter, at a speed mapped linearly
-  from load (see [docs/adr/0001-menubar-animation-appkit.md](docs/adr/0001-menubar-animation-appkit.md)).
+  from load (see [docs/en/adr/0001-menubar-animation-appkit.md](docs/en/adr/0001-menubar-animation-appkit.md)).
   The memory gauge reuses the frame but fills its stroke (`strokeEnd`) to the used
   ratio and does not animate.
 

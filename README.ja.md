@@ -45,7 +45,7 @@ notarize + staple して `dist/load-spinner-v<version>-darwin-arm64.zip` を生�
 クリックするとステータスパネルが開き、CPU/GPU のライブ負荷・メモリドーナツ・直近の履歴グラフを
 確認できます。パネルは一目で見るための表示に徹し、右上の歯車ボタンで**パネルが裏返って**設定面が
 現れます（同じ位置の chevron で元に戻ります）
-（[docs/adr/0003-settings-on-popover-back.md](docs/adr/0003-settings-on-popover-back.md) 参照）:
+（[docs/en/adr/0003-settings-on-popover-back.md](docs/en/adr/0003-settings-on-popover-back.md) 参照）:
 
 - 表示モード: 高い方（CPU/GPUの高い方）／ CPUのみ ／ GPUのみ ／ 2つ表示
 - シンボル: 丸 ／ 四角（2つ表示時は CPU・GPU 個別）
@@ -59,7 +59,7 @@ notarize + staple して `dist/load-spinner-v<version>-darwin-arm64.zip` を生�
 「どれくらい忙しいか」までがこのアプリの担当で、「何が忙しくしているのか」は
 アクティビティモニタの担当、というつなぎ目です。アクティビティモニタが見つからない
 環境ではボタンは無効化されます
-（[docs/adr/0004-activity-monitor-handoff.md](docs/adr/0004-activity-monitor-handoff.md) 参照）。
+（[docs/en/adr/0004-activity-monitor-handoff.md](docs/en/adr/0004-activity-monitor-handoff.md) 参照）。
 
 ステータスパネルはメニューバーのトグルに関わらず常にメモリドーナツ（穴に使用率、使用/総量 GB）を
 表示します。システムで GPU 使用率が取得できない場合、
@@ -87,11 +87,11 @@ load-spinner --help      # 使い方
 - メモリは `host_statistics64`（`HOST_VM_INFO64`）から取得。使用率は Activity Monitor の
   *使用済みメモリ*（App + Wired + Compressed）に相当し、`free` は使いません。macOS は
   空き RAM をファイルキャッシュで埋めるため `free` はほぼ常にゼロ近くで誤解を招くからです
-  （[docs/adr/0002-memory-as-filling-gauge.md](docs/adr/0002-memory-as-filling-gauge.md) 参照）。
+  （[docs/en/adr/0002-memory-as-filling-gauge.md](docs/en/adr/0002-memory-as-filling-gauge.md) 参照）。
 - メニューバーアイコンは AppKit `NSStatusItem` 上のレイヤーバックビュー。スピナーは枠を固定し、
   `CAShapeLayer` の `lineDashPhase` をアニメーションさせて点灯部分1つが周囲を周回します
   （回転速度は負荷から線形にマッピング。
-  [docs/adr/0001-menubar-animation-appkit.md](docs/adr/0001-menubar-animation-appkit.md) 参照）。
+  [docs/en/adr/0001-menubar-animation-appkit.md](docs/en/adr/0001-menubar-animation-appkit.md) 参照）。
   メモリゲージは同じ枠を流用しますが、ストローク（`strokeEnd`）を使用率まで充填し、回転しません。
 
 ## ライセンス

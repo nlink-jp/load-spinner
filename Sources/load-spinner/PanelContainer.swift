@@ -10,7 +10,7 @@ import SwiftUI
 /// the flip — so the status face is not padded out to the settings height. Each
 /// face is measured at its natural size via `.fixedSize`, independent of the
 /// height the container is currently constrained to. See
-/// docs/adr/0003-settings-on-popover-back.md.
+/// docs/en/adr/0003-settings-on-popover-back.md.
 struct PanelContainer: View {
     @ObservedObject var model: AppModel
     var onOpenActivityMonitor: (() -> Void)?

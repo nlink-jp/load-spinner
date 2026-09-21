@@ -5,7 +5,7 @@ import SwiftUI
 /// flipping the status readout over via its gear button (see `PanelContainer`). A
 /// back chevron flips it back. Keeping settings off the front face leaves the
 /// glance uncluttered without sending the user to a separate window. See
-/// docs/adr/0003-settings-on-popover-back.md.
+/// docs/en/adr/0003-settings-on-popover-back.md.
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     var onBack: () -> Void

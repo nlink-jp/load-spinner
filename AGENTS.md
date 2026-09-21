@@ -76,7 +76,7 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
   renders as a static image and does not animate smoothly. The indicator is an
   `NSStatusItem` with a layer-backed view; the frame is fixed and the lit segment
   travels via an animated `CAShapeLayer.lineDashPhase`. See
-  `docs/adr/0001-menubar-animation-appkit.md`.
+  `docs/en/adr/0001-menubar-animation-appkit.md`.
 - **Swift 6 strict concurrency.** UI types are `@MainActor`; timers use the
   target/selector API (not `@Sendable` closures) to avoid capture errors. The
   status view lives for the app lifetime, so it has no `deinit` timer teardown.
@@ -92,7 +92,7 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
   popover is a card: `PanelView` (status) on the front, `SettingsView` on the back,
   hosted by `PanelContainer`, which flips between them with a Y-axis
   `rotation3DEffect`. Splitting them kept the popover uncluttered after the memory
-  settings block grew (see `docs/adr/0003-settings-on-popover-back.md`). Gotchas
+  settings block grew (see `docs/en/adr/0003-settings-on-popover-back.md`). Gotchas
   worth knowing:
   - **Both flip toggles are top-right and `.focusable(false)`.** The front's gear
     and the back's chevron share the corner so the control never moves; without
@@ -181,7 +181,7 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
     panel, empty menu bar, inside click stays open, button click closes without
     reopening.
 - **Activity Monitor hand-off.** The panel footer's button launches
-  `com.apple.ActivityMonitor` (see `docs/adr/0004-activity-monitor-handoff.md`).
+  `com.apple.ActivityMonitor` (see `docs/en/adr/0004-activity-monitor-handoff.md`).
   The location is resolved **once at launch** by `resolveActivityMonitorURL`
   (Launch Services first, then the `/System/Applications/Utilities` path), and
   `AppDelegate` hands `PanelContainer`/`PanelView` a closure — or `nil`, which
@@ -204,7 +204,7 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
   reuse of `ColorMode`, default `gradient`). "Used" follows Activity Monitor (App +
   Wired + Compressed, minus purgeable), **not** `free` — free is near-zero on macOS
   because the OS caches into idle RAM. (Pressure-band coloring was tried and dropped
-  as unintuitive.) See `docs/adr/0002-memory-as-filling-gauge.md`.
+  as unintuitive.) See `docs/en/adr/0002-memory-as-filling-gauge.md`.
 - **Color mode.** `ColorMode.gradient` colors the indicator/gauge by current load
   (`loadGradientColorHex`); the history chart deliberately keeps fixed CPU-green /
   GPU-blue lines so the two series stay distinguishable. The native SwiftUI
