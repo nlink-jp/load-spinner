@@ -11,8 +11,14 @@ import SwiftUI
 /// face is measured at its natural size via `.fixedSize`, independent of the
 /// height the container is currently constrained to. See
 /// docs/en/adr/0003-settings-on-popover-back.md.
+///
+/// The settings face is built only once the popover is up (`PanelOpening`), not
+/// as part of opening it: building it made `NSPopover.show` take about twice as
+/// long, and a show still running when the button is released makes the menu bar
+/// item's highlight go dark for a frame or three (measured on macOS 27.0).
 struct PanelContainer: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var opening: PanelOpening
     var onOpenActivityMonitor: (() -> Void)?
     var onQuit: () -> Void
 
@@ -40,15 +46,17 @@ struct PanelContainer: View {
             .opacity(showingSettings ? 0 : 1)
             .animation(.easeInOut(duration: 0.2), value: showingSettings)
 
-            SettingsView(model: model, onBack: { showingSettings = false })
-                .fixedSize(horizontal: false, vertical: true)
-                .modifier(MeasureHeight(height: $backHeight))
-                // Pre-rotated so it reads correctly once the container reaches 180°.
-                .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-                // Back fades in only after the midpoint, so the two faces never
-                // overlap on screen during the flip.
-                .opacity(showingSettings ? 1 : 0)
-                .animation(.easeInOut(duration: 0.2).delay(0.2), value: showingSettings)
+            if opening.popoverIsUp || showingSettings {
+                SettingsView(model: model, onBack: { showingSettings = false })
+                    .fixedSize(horizontal: false, vertical: true)
+                    .modifier(MeasureHeight(height: $backHeight))
+                    // Pre-rotated so it reads correctly once the container reaches 180°.
+                    .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                    // Back fades in only after the midpoint, so the two faces never
+                    // overlap on screen during the flip.
+                    .opacity(showingSettings ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.2).delay(0.2), value: showingSettings)
+            }
         }
         // Constrain to the active face's height (animated with the flip). The
         // inactive, taller face overflows this frame but is hidden, so it is unseen.
@@ -60,6 +68,15 @@ struct PanelContainer: View {
         )
         .animation(.easeInOut(duration: 0.4), value: showingSettings)
     }
+}
+
+/// Made for each opening of the panel. `AppDelegate` sets `popoverIsUp` on the
+/// turn of the run loop after `NSPopover.show` has returned — not from SwiftUI's
+/// `.task`, which runs inside `show` (measured: deferring the face there saved
+/// nothing).
+@MainActor
+final class PanelOpening: ObservableObject {
+    @Published var popoverIsUp = false
 }
 
 /// Reports a view's laid-out height back to a binding. Pair with `.fixedSize`

@@ -97,3 +97,20 @@ everything anchored under the menu bar icon.
   measurement), and truer to a physical card, but it padded the status face with
   dead space to match the settings height. Fitting each face won out; the flip is
   already a loose-enough card metaphor to allow the size to change.
+
+## Amendments
+
+### 2026-09-21 — the settings face is built once the popover is up
+
+Building both faces as part of opening made `NSPopover.show` take 92–94 ms
+(the status face alone: 41–49 ms). On macOS 27 the status item's action arrives
+while the button is still held; the menu bar drops the pressed highlight at the
+release and shows the popover's own highlight only once `show` is done, so a show
+still running at the release left the icon dark for a frame or three — on 5 of 5
+filmed opens. The settings face is now built on the turn of the run loop after
+`show` returns (`PanelOpening`), or at once if the gear is pressed first; after
+the first open since launch, 0 of 4 filmed opens blinked (37–65 ms). SwiftUI's
+`.task` is not a way to defer it: it runs inside `show`, and deferring there saved
+nothing. The popover's size does not change when the late face is built (the
+container's height follows the visible face, as decided above). The first open
+after launch still takes long enough to blink once.

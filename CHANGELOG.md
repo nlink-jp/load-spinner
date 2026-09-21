@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [Unreleased]
+
+### Fixed
+
+- **The menu bar icon's highlight blinked when the panel opened.** Clicking the
+  icon to open the panel left it unhighlighted for a frame or three before the
+  highlight came back, on every click on macOS 27. The panel was still being
+  built when the mouse button came up, and macOS drops the pressed highlight at
+  that moment and shows the open-panel highlight only once the panel is up. The
+  hidden settings side of the panel is now built just after the panel opens,
+  which halves the time opening takes; the highlight stays on. The first open
+  after the app starts can still blink once.
+
 ## [0.5.3] - 2026-09-21
 
 ### Fixed

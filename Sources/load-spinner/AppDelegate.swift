@@ -132,11 +132,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showPanel() {
         guard let button = statusItem.button else { return }
+        let opening = PanelOpening()
         // Build the SwiftUI panel only while it is on screen so it does no
         // rendering work when closed. It resets to the status face on each open.
         let hosting = NSHostingController(
             rootView: PanelContainer(
                 model: model,
+                opening: opening,
                 onOpenActivityMonitor: activityMonitorURL.map { url in
                     { [weak self] in
                         self?.closePanelFromApp()
@@ -152,6 +154,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = hosting
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
+        // The hidden settings face is built now, after `show` has returned.
+        // On macOS 27 the button's action arrives while the button is still
+        // held; the menu bar drops the pressed highlight at the release and
+        // shows the popover's own highlight only once `show` is done, so a show
+        // still running at the release leaves the item dark for a frame or
+        // three. Building both faces inside `show` took 92–94 ms, the front
+        // alone 41–49 ms (measured on macOS 27.0).
+        DispatchQueue.main.async { opening.popoverIsUp = true }
     }
 
     private func closePanelFromApp() {

@@ -47,7 +47,7 @@ Sources/
     AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, status popover + outside-click monitors
     SpinnerView.swift    Layer-backed indicators: spinner cells (lineDashPhase) + gauge cells (strokeEnd fill)
     AppModel.swift       ObservableObject: live loads, history, settings
-    PanelContainer.swift Two-faced flip: PanelView (front) ⇄ SettingsView (back); Y-axis rotation + per-face height fit
+    PanelContainer.swift Two-faced flip: PanelView (front) ⇄ SettingsView (back); Y-axis rotation + per-face height fit; PanelOpening (back face waits for the popover)
     PanelView.swift      SwiftUI popover front face (status): live gauges, Swift Charts history, top-right gear + footer (Activity Monitor, quit)
     ActivityMonitor.swift NSWorkspace wrapper: locate() + open(at:) for com.apple.ActivityMonitor
     SettingsView.swift   SwiftUI popover back face (settings): mode/color/shape/memory/login, top-right chevron back
@@ -108,6 +108,17 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
     currently constrained to), and `.frame(height:)` animates between them with the
     flip. A tried-first *separate `NSWindow`* was dropped as disjoint — it appeared
     away from the menu bar and had to `NSApp.activate`; see the ADR's alternatives.
+  - **The settings face is built after the popover is up**, on the run-loop turn
+    after `popover.show` returns (`PanelOpening.popoverIsUp`), or at once if the
+    gear is pressed first. Built inside `show`, both faces took 92–94 ms and the
+    menu bar icon went dark for a frame or three on every click-open: on macOS 27
+    the action arrives while the button is still held, the menu bar drops the
+    pressed highlight at the release, and the popover's highlight comes on only
+    when `show` is done. Measured by filming the item's rectangle (5/5 blinked
+    before, 0/4 after the first open since launch; the first open still blinks).
+    SwiftUI's `.task` runs inside `show` and cannot defer it. Keep anything new
+    that is hidden on opening out of `show` the same way;
+    `PanelOpeningRuleTests` pins the shape.
 - **A click on the status item is decided by `PanelToggle` (`LoadSpinnerCore`), and
   nothing reads the panel to do it.** Measured on the real app (macOS 27.0,
   2026-09-21) with synthetic HID clicks and every event logged:
