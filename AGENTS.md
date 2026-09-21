@@ -40,7 +40,8 @@ Sources/
     Settings.swift       IndicatorShape/DisplayMode/ColorMode enums, AppSettings, palette
     SystemApps.swift     resolveActivityMonitorURL(lookupBundleID:fileExists:) — pure, injected probes
     SingleInstance.swift singleInstanceDecision() — startup duplicate-instance guard (pure; pids in, decision out)
-    PopoverDismissal.swift shouldClosePopover(isShown:clickSite:) — which local mouse-downs close the popover (pure)
+    PopoverDismissal.swift shouldClosePopover(panelIsUp:clickSite:) — which local mouse-downs close the popover (pure)
+    PanelToggle.swift    one click, two events (global monitor + button action): who dismisses, who opens, and what the panel's own readings cannot tell (pure)
   load-spinner/        Executable (AppKit + SwiftUI)
     Entry.swift          @main; CLI dispatch vs GUI bootstrap
     AppDelegate.swift    NSStatusItem, GPU probe, sampling timer, status popover + outside-click monitors
@@ -107,19 +108,56 @@ Info.plist               Bundle template at the repo root (${VERSION}, ${BUNDLE_
     currently constrained to), and `.frame(height:)` animates between them with the
     flip. A tried-first *separate `NSWindow`* was dropped as disjoint — it appeared
     away from the menu bar and had to `NSApp.activate`; see the ADR's alternatives.
+- **A click on the status item is decided by `PanelToggle` (`LoadSpinnerCore`), and
+  nothing reads the panel to do it.** Measured on the real app (macOS 27.0,
+  2026-09-21) with synthetic HID clicks and every event logged:
+  - **`NSPopover.isShown` stays true for about half a second after a close**,
+    until `popoverDidClose` — and that report arrives *after* a show that
+    followed it, so the delegate callback cannot be believed on its own either.
+    The panel window's `isVisible` goes false at once, but it is also false
+    between a show and the moment the panel appears (AppKit queues a show that
+    starts during a close animation behind it, about 0.4 s). **This was the
+    reported defect**: deciding from `isShown`, a re-click inside that half
+    second was read as "the panel is open" and closed it again, so the panel did
+    not open — 0 out of 10 at every gap tried on the release build, against 10
+    out of 10 at 130 ms and 200 ms with the fix.
+  - **The panel can only be opened from the button's action.** A show issued
+    from the monitor, on the mouse-down or on the mouse-up, was dismissed by
+    AppKit inside the same click, every time. The monitor's part is to dismiss.
+  - **One click produces two events and the second often does not come**: the
+    monitor sees it first, the action 23–41 ms later, and of eight
+    well-separated clicks eight were monitored and five produced an action (the
+    missing ones being clicks that closed the panel). So an action within
+    `PanelToggle.actionWindow` (0.1 s) of the monitor closing the panel for a
+    click on the item is that click's second event and does nothing. **Do not
+    pair the two events by order** — with one of them missing, "the action of
+    the click that just closed the panel" and "the action of the click that is
+    meant to open it" are the same event; an earlier fix did pair them and
+    swallowed clicks.
+  - **Residual, measured:** at a 60–100 ms gap the panel ended up closed once in
+    ten, when the dismissed click's action arrived after the window and was
+    taken for a click of its own. Two clicks that fast are one gesture, and the
+    alternative — a longer window — swallows the re-click, which is the defect
+    above. Pinned by `testAVeryFastDoubleClickCanEndUpClosed`.
+  - The rule that nothing decides from `isShown` is machine-checked by
+    `PanelReadingRuleTests`; the AppKit readings above are pinned by
+    `PopoverReadingsTests`.
 - **Outside-click dismissal never relies on `.transient` alone.** Measured on the
   real app (macOS 27.0, 2026-09-20): `.transient` closed the popover only when
   the outside click landed in a window that takes activation — another app's
   normal window, whether or not that app was already frontmost. A click on a
   surface that takes none — an empty stretch of the menu bar, another process's
   non-activating panel — left it open every time. `togglePopover` therefore
-  installs global + local mouse-down monitors while the popover is shown
-  (`installPopoverClickMonitors`, ported from status-lens) and removes them in
-  `popoverDidClose`. Rules that come with them:
+  installs global + local mouse-down monitors at launch
+  (`installPopoverClickMonitors`, ported from status-lens) and keeps them for as
+  long as the app runs — the global one is also what dismisses the panel for a
+  click on our own status item (see the bullet below). Rules that come with
+  them:
   - **The local monitor must ignore the status item button's window**, or one
     button click becomes close-then-reopen. That decision is the pure
-    `shouldClosePopover(isShown:clickSite:)` in `LoadSpinnerCore` (tested); the
-    AppKit side only classifies `event.window`.
+    `shouldClosePopover(panelIsUp:clickSite:)` in `LoadSpinnerCore` (tested);
+    the AppKit side only classifies `event.window`. Its argument is
+    `PanelToggle.isUp` — this app's own record — never `NSPopover.isShown`.
   - **The local monitor closes on a mouse-down in any other window of this app.**
     Today there is none (every control, on both faces, lives in the popover's
     window). A separate window, or a control that opens its own window, has to

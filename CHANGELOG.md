@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [Unreleased]
+
+### Fixed
+
+- **Clicking the menu bar icon again right after the panel closed did nothing.**
+  The app asked macOS whether the panel was open, and macOS keeps answering
+  "open" for about half a second after it has closed (measured on macOS 27.0),
+  so the click was taken for "close it" and nothing happened. Clicking
+  repeatedly could leave the panel shut for as long as you kept clicking. The
+  app now keeps its own record of whether the panel is up, and a click a tenth
+  of a second after the panel closed opens it again.
+
 ## [0.5.2] - 2026-09-20
 
 ### Fixed

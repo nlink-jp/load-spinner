@@ -19,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var activityMonitorURL: URL?
     private var sampleTimer: Timer?
     private var popoverClickMonitors: [Any] = []
+    /// Whether the panel is up, and which of the two events of one click on
+    /// our own status item has already acted. Never `popover.isShown`, which
+    /// lags a close by about half a second (see `PanelToggle`).
+    private var panelToggle = PanelToggle()
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -40,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover.behavior = .transient
         popover.delegate = self
+        installPopoverClickMonitors()
 
         // Re-apply the menu bar appearance the instant settings change.
         model.$settings
@@ -112,47 +117,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The button's action — the only way the panel opens (a show issued from
+    /// the monitor is dismissed within the same click; measured). Not
+    /// `popover.isShown`: that stays true for about half a second after a close,
+    /// and reading it is what kept a re-click from opening the panel at all
+    /// (see `PanelToggle`).
     @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            // Build the SwiftUI panel only while it is on screen so it does no
-            // rendering work when closed. It resets to the status face on each open.
-            let hosting = NSHostingController(
-                rootView: PanelContainer(
-                    model: model,
-                    onOpenActivityMonitor: activityMonitorURL.map { url in
-                        { [weak self] in
-                            self?.popover.performClose(nil)
-                            ActivityMonitor.open(at: url)
-                        }
-                    },
-                    onQuit: { NSApplication.shared.terminate(nil) }
-                )
-            )
-            // Size the popover to the SwiftUI content's ideal size, otherwise the
-            // top of the panel is clipped.
-            hosting.sizingOptions = [.preferredContentSize]
-            popover.contentViewController = hosting
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
-            installPopoverClickMonitors()
+        switch panelToggle.statusItemAction(at: Date()) {
+        case .close: popover.performClose(nil)
+        case .open: showPanel()
+        case .none: break
         }
     }
 
-    /// `.transient` only closes the popover when the outside click lands in a
-    /// window that takes activation. A click on a surface that does not — an
-    /// empty stretch of the menu bar, another process's non-activating panel —
-    /// leaves it open (measured on macOS 27.0, with and without the `makeKey()`
-    /// above), so outside clicks are watched explicitly while it is shown.
+    private func showPanel() {
+        guard let button = statusItem.button else { return }
+        // Build the SwiftUI panel only while it is on screen so it does no
+        // rendering work when closed. It resets to the status face on each open.
+        let hosting = NSHostingController(
+            rootView: PanelContainer(
+                model: model,
+                onOpenActivityMonitor: activityMonitorURL.map { url in
+                    { [weak self] in
+                        self?.closePanelFromApp()
+                        ActivityMonitor.open(at: url)
+                    }
+                },
+                onQuit: { NSApplication.shared.terminate(nil) }
+            )
+        )
+        // Size the popover to the SwiftUI content's ideal size, otherwise the
+        // top of the panel is clipped.
+        hosting.sizingOptions = [.preferredContentSize]
+        popover.contentViewController = hosting
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    private func closePanelFromApp() {
+        if panelToggle.closeFromApp() == .close { popover.performClose(nil) }
+    }
+
+    /// Installed at launch and kept for as long as the app runs: it is what
+    /// dismisses the panel, including for a click on our own status item, whose
+    /// button action arrives 23–41 ms later and often not at all (measured —
+    /// see `PanelToggle`). `.transient` alone only closes the popover when the
+    /// outside click lands in a window that takes activation; a click on a
+    /// surface that does not — an empty stretch of the menu bar, another
+    /// process's non-activating panel — leaves it open (measured on macOS 27.0,
+    /// with and without the `makeKey()` in `showPanel`).
     private func installPopoverClickMonitors() {
         removePopoverClickMonitors()
         let events: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
-        let global = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.popover.performClose(nil)
-            }
+        let global = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] event in
+            // A global monitor's event has no window, so this is already in
+            // screen coordinates. NSEvent is not Sendable; the point is.
+            let location = event.locationInWindow
+            MainActor.assumeIsolated { self?.globalMouseDown(at: location) }
         }
         let local = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
             let window = event.window
@@ -166,13 +187,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     site = .elsewhere
                 }
-                if shouldClosePopover(isShown: self.popover.isShown, clickSite: site) {
-                    self.popover.performClose(nil)
+                if shouldClosePopover(panelIsUp: self.panelToggle.isUp, clickSite: site) {
+                    self.closePanelFromApp()
                 }
             }
             return event
         }
         popoverClickMonitors = [global, local].compactMap { $0 }
+    }
+
+    /// Every global mouse-down: it dismisses a panel that is up, wherever the
+    /// click landed. A click on our own status item is noted, so that the same
+    /// click's button action does not open the panel again.
+    private func globalMouseDown(at location: CGPoint) {
+        // The frame is read now: the item is as wide as its content.
+        let onItem = statusItemOwns(
+            location, itemWindowFrame: statusItem.button?.window?.frame)
+        if panelToggle.globalMouseDown(onStatusItem: onItem, at: Date()) == .close {
+            popover.performClose(nil)
+        }
     }
 
     private func removePopoverClickMonitors() {
@@ -185,7 +218,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
-        removePopoverClickMonitors()
+        // Arrives about half a second after the close, which can be after the
+        // panel has been opened again; `PanelToggle` tells the two apart.
+        panelToggle.panelReportedClose()
+        guard !panelToggle.isUp else { return }
         // Release the SwiftUI panel so it stops consuming resources when hidden.
         popover.contentViewController = nil
     }
