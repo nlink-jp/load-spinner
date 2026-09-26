@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows semantic versioning once released.
 
+## [Unreleased]
+
+### Fixed
+
+- The release zip no longer carries AppleDouble (`._*`) entries: the app is
+  zipped with `ditto --norsrc --noextattr`, so its signature survives unpacking
+  with `unzip`. `make verify-release` refuses a zip that carries them.
+
 ## [0.5.4] - 2026-09-21
 
 ### Fixed
